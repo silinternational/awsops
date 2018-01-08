@@ -9,6 +9,19 @@ platform and run it directly.
 
 You can also clone this repo and use `go build` or `go run` to run it. 
 
+## Configuration
+This app makes use of the AWS Go SDK - https://docs.aws.amazon.com/sdk-for-go/api/
+
+This library makes use of standard AWS CLI configurations such as the `~/.aws/credentials` file. If you don't already use the AWS CLI, the easiest way to configure your system is to create a `.aws` folder in your home directory and a `credentials` file inside that directory. The format of the file should be:
+
+```
+[nameofprofile]
+aws_access_key_id = value
+aws_secret_access_key = value
+```
+
+Then when using `awsops` you can use the `-p` flag followed by whatever profile from the `credentials` file you want to use. For example: `awsops -p default ...`
+
 ## Usage
 
 ```
