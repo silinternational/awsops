@@ -19,19 +19,15 @@ import (
 	"os"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/autoscaling"
 	"github.com/aws/aws-sdk-go/service/ec2"
-	"github.com/aws/aws-sdk-go/service/ecs"
 	"github.com/spf13/cobra"
+	"github.com/silinternational/awsops/lib"
 )
 
-var cluster string
-
 // ecsReplaceInstancesCmd represents the ecsReplaceInstances command
-var ecsReplaceInstancesCmd = &cobra.Command{
-	Use:   "ecsReplaceInstances",
+var replaceInstancesCmd = &cobra.Command{
+	Use:   "replaceInstances",
 	Short: "Gracefully replace EC2 instances for given ECS cluster",
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -62,14 +58,14 @@ var ecsReplaceInstancesCmd = &cobra.Command{
 		}
 		fmt.Println("Finished terminating instances")
 
-		instances := getInstanceListForCluster(cluster)
+		instances := lib.GetInstanceListForCluster(AwsSess, cluster)
 		fmt.Println("Final instances in cluster: ", len(instances))
 		fmt.Println("All done. Be sure to tip your waiter and thank AppsDev for making your life better.")
 	},
 }
 
 func init() {
-	RootCmd.AddCommand(ecsReplaceInstancesCmd)
+	ecsCmd.AddCommand(replaceInstancesCmd)
 
 	// Here you will define your flags and configuration settings.
 
@@ -80,132 +76,6 @@ func init() {
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	// ecsReplaceInstancesCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
-	ecsReplaceInstancesCmd.Flags().StringVarP(&cluster, "cluster", "c", "", "ECS cluster name")
-}
-
-func getInstanceListForCluster(clusterName string) []string {
-	svc := ecs.New(AwsSess)
-	listResult, err := svc.ListContainerInstances(&ecs.ListContainerInstancesInput{
-		Cluster: aws.String(cluster),
-	})
-	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			switch aerr.Code() {
-			case ecs.ErrCodeServerException:
-				fmt.Println(ecs.ErrCodeServerException, aerr.Error())
-			case ecs.ErrCodeClientException:
-				fmt.Println(ecs.ErrCodeClientException, aerr.Error())
-			case ecs.ErrCodeInvalidParameterException:
-				fmt.Println(ecs.ErrCodeInvalidParameterException, aerr.Error())
-			case ecs.ErrCodeClusterNotFoundException:
-				fmt.Println(ecs.ErrCodeClusterNotFoundException, aerr.Error())
-			default:
-				fmt.Println(aerr.Error())
-			}
-		} else {
-			// Print the error, cast err to awserr.Error to get the Code and
-			// Message from an error.
-			fmt.Println(err.Error())
-		}
-		os.Exit(1)
-	}
-
-	descResult, err := svc.DescribeContainerInstances(&ecs.DescribeContainerInstancesInput{
-		Cluster:            aws.String(cluster),
-		ContainerInstances: listResult.ContainerInstanceArns,
-	})
-	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			switch aerr.Code() {
-			case ecs.ErrCodeServerException:
-				fmt.Println(ecs.ErrCodeServerException, aerr.Error())
-			case ecs.ErrCodeClientException:
-				fmt.Println(ecs.ErrCodeClientException, aerr.Error())
-			case ecs.ErrCodeInvalidParameterException:
-				fmt.Println(ecs.ErrCodeInvalidParameterException, aerr.Error())
-			case ecs.ErrCodeClusterNotFoundException:
-				fmt.Println(ecs.ErrCodeClusterNotFoundException, aerr.Error())
-			default:
-				fmt.Println(aerr.Error())
-			}
-		} else {
-			// Print the error, cast err to awserr.Error to get the Code and
-			// Message from an error.
-			fmt.Println(err.Error())
-		}
-		os.Exit(1)
-	}
-
-	instances := []string{}
-
-	for _, instance := range descResult.ContainerInstances {
-		instances = append(instances, *instance.Ec2InstanceId)
-	}
-
-	return instances
-}
-
-func getPendingTasksCount(cluster string) int64 {
-	svc := ecs.New(AwsSess)
-
-	services, err := svc.ListServices(&ecs.ListServicesInput{
-		Cluster: aws.String(cluster),
-	})
-	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			switch aerr.Code() {
-			case ecs.ErrCodeServerException:
-				fmt.Println(ecs.ErrCodeServerException, aerr.Error())
-			case ecs.ErrCodeClientException:
-				fmt.Println(ecs.ErrCodeClientException, aerr.Error())
-			case ecs.ErrCodeInvalidParameterException:
-				fmt.Println(ecs.ErrCodeInvalidParameterException, aerr.Error())
-			case ecs.ErrCodeClusterNotFoundException:
-				fmt.Println(ecs.ErrCodeClusterNotFoundException, aerr.Error())
-			default:
-				fmt.Println(aerr.Error())
-			}
-		} else {
-			// Print the error, cast err to awserr.Error to get the Code and
-			// Message from an error.
-			fmt.Println(err.Error())
-		}
-		os.Exit(1)
-	}
-
-	descResult, err := svc.DescribeServices(&ecs.DescribeServicesInput{
-		Cluster:  aws.String(cluster),
-		Services: services.ServiceArns,
-	})
-	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			switch aerr.Code() {
-			case ecs.ErrCodeServerException:
-				fmt.Println(ecs.ErrCodeServerException, aerr.Error())
-			case ecs.ErrCodeClientException:
-				fmt.Println(ecs.ErrCodeClientException, aerr.Error())
-			case ecs.ErrCodeInvalidParameterException:
-				fmt.Println(ecs.ErrCodeInvalidParameterException, aerr.Error())
-			case ecs.ErrCodeClusterNotFoundException:
-				fmt.Println(ecs.ErrCodeClusterNotFoundException, aerr.Error())
-			default:
-				fmt.Println(aerr.Error())
-			}
-		} else {
-			// Print the error, cast err to awserr.Error to get the Code and
-			// Message from an error.
-			fmt.Println(err.Error())
-		}
-		os.Exit(1)
-	}
-
-	var pendingTasks int64
-
-	for _, service := range descResult.Services {
-		pendingTasks += *service.PendingCount
-	}
-
-	return pendingTasks
 }
 
 func terminateInstance(id string) (bool, error) {
@@ -236,18 +106,18 @@ func waitForZeroPendingTasks(cluster string) {
 	time.Sleep(120 * time.Second)
 	for pendingTasks = 1000; pendingTasks > 0; {
 		time.Sleep(30 * time.Second)
-		pendingTasks = getPendingTasksCount(cluster)
+		pendingTasks = lib.GetPendingTasksCount(AwsSess, cluster)
 		fmt.Printf("\rPending tasks: %v", pendingTasks)
 	}
 	fmt.Println()
 }
 
 func getAsgNameForEcsCluster(cluster string) string {
-	instances := getInstanceListForCluster(cluster)
+	instanceIDs := lib.GetInstanceIDsForCluster(AwsSess, cluster)
 
 	svc := ec2.New(AwsSess)
 	instanceDetails, err := svc.DescribeInstances(&ec2.DescribeInstancesInput{
-		InstanceIds: []*string{&instances[0]},
+		InstanceIds: instanceIDs,
 	})
 	if err != nil {
 		fmt.Println("Unable to get asg name from instance: ", err)
