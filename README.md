@@ -32,8 +32,8 @@ Usage:
   awsops [command]
 
 Available Commands:
-  ecsReplaceInstances Gracefully replace EC2 instances for given ECS cluster
-  help                Help about any command
+  ecs         ECS related actions, run 'awsops ecs' to view list of subcommands
+  help        Help about any command
 
 Flags:
       --config string    config file (default is $HOME/.awsops.yaml)
@@ -46,17 +46,58 @@ Use "awsops [command] --help" for more information about a command.
 ```
 
 ```
-$ awsops ecsReplaceInstances -h
-Gracefully replace EC2 instances for given ECS cluster
+$ awsops ecs
+ECS related actions, run 'awsops ecs' to view list of subcommands
 
 Usage:
-  awsops ecsReplaceInstances [flags]
+  awsops ecs [flags]
+  awsops ecs [command]
+
+Available Commands:
+  listInstanceIPs  List Instance IPs for ECS Cluster
+  replaceInstances Gracefully replace EC2 instances for given ECS cluster
 
 Flags:
   -c, --cluster string   ECS cluster name
-  -h, --help             help for ecsReplaceInstances
+  -h, --help             help for ecs
 
 Global Flags:
+      --config string    config file (default is $HOME/.awsops.yaml)
+  -p, --profile string   AWS shared credentials profile to use
+  -r, --region string    AWS shared credentials profile to use (default "us-east-1")
+
+Use "awsops ecs [command] --help" for more information about a command.
+```
+
+```
+$ awsops ecs listInstanceIPs --help
+Command returns a space separated list of IP addresses for instances in an ECS cluster
+
+Usage:
+  awsops ecs listInstanceIPs [flags]
+
+Flags:
+  -h, --help   help for listInstanceIPs
+
+Global Flags:
+  -c, --cluster string   ECS cluster name
+      --config string    config file (default is $HOME/.awsops.yaml)
+  -p, --profile string   AWS shared credentials profile to use
+  -r, --region string    AWS shared credentials profile to use (default "us-east-1")
+```
+
+```
+$ awsops ecs replaceInstances --help
+Gracefully replace EC2 instances for given ECS cluster
+
+Usage:
+  awsops ecs replaceInstances [flags]
+
+Flags:
+  -h, --help   help for replaceInstances
+
+Global Flags:
+  -c, --cluster string   ECS cluster name
       --config string    config file (default is $HOME/.awsops.yaml)
   -p, --profile string   AWS shared credentials profile to use
   -r, --region string    AWS shared credentials profile to use (default "us-east-1")
