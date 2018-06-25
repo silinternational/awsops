@@ -26,7 +26,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 )
 
-var Role string
 var AwsSess *session.Session
 var cfgFile string
 var Profile string
@@ -58,7 +57,6 @@ func init() {
 	// Cobra supports persistent flags, which, if defined here,
 	// will be global for your application.
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.awsops.yaml)")
-	rootCmd.PersistentFlags().StringVarP(&Role, "role", "", "", "Role name to assume for authentication")
 	rootCmd.PersistentFlags().StringVarP(&Profile, "profile", "p", "", "AWS shared credentials profile to use")
 	rootCmd.PersistentFlags().StringVarP(&Region, "region", "r", "us-east-1", "AWS shared credentials profile to use")
 
@@ -102,6 +100,8 @@ func initAwsSess() {
 			Credentials: credentials.NewSharedCredentials("", Profile),
 		}))
 	} else {
-		AwsSess = session.Must(session.NewSession())
+		AwsSess = session.Must(session.NewSession(&aws.Config{
+			Region:      aws.String(Region),
+		}))
 	}
 }
