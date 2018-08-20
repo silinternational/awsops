@@ -9,6 +9,8 @@ sudo wget -P /usr/local/bin/ https://raw.githubusercontent.com/silinternational/
 sudo chmod a+x /usr/local/bin/runny
 
 # Install dependencies
+sudo runny apt-get update -y
+sudo runny apt-get install -y awscli
 runny go get github.com/golang/dep/cmd/dep
 runny go get github.com/mitchellh/gox
 cd ~/src/github.com/silinternational/awsops

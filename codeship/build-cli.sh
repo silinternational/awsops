@@ -3,7 +3,7 @@ set -x
 
 # array of target os/arch
 targets=( "darwin/amd64" "linux/amd64" "linux/arm" "windows/386" )
-distPath="dist/"
+distPath="dist"
 
 # download gpg keys to use for signing
 runny aws s3 cp s3://$KEY_BUCKET/secret.key ./
