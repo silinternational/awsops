@@ -1,16 +1,16 @@
 package lib
 
 import (
-	"github.com/aws/aws-sdk-go/service/ecs"
+	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
-	"fmt"
-	"os"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/aws/aws-sdk-go/service/ecs"
+	"os"
 )
 
-func GetInstanceListForCluster(awsSess *session.Session, clusterName string) []*ecs.ContainerInstance {
+func GetInstanceListForEcsCluster(awsSess *session.Session, clusterName string) []*ecs.ContainerInstance {
 	svc := ecs.New(awsSess)
 	listResult, err := svc.ListContainerInstances(&ecs.ListContainerInstancesInput{
 		Cluster: aws.String(clusterName),
@@ -66,8 +66,8 @@ func GetInstanceListForCluster(awsSess *session.Session, clusterName string) []*
 	return descResult.ContainerInstances
 }
 
-func GetInstanceIDsForCluster(awsSess *session.Session, clusterName string) []*string {
-	instances := GetInstanceListForCluster(awsSess, clusterName)
+func GetInstanceIDsForEcsCluster(awsSess *session.Session, clusterName string) []*string {
+	instances := GetInstanceListForEcsCluster(awsSess, clusterName)
 	instanceIDs := []*string{}
 
 	for _, instance := range instances {
@@ -77,8 +77,8 @@ func GetInstanceIDsForCluster(awsSess *session.Session, clusterName string) []*s
 	return instanceIDs
 }
 
-func GetInstanceIPsForCluster(awsSess *session.Session, clusterName string) []string {
-	instanceIDs := GetInstanceIDsForCluster(awsSess, clusterName)
+func GetInstanceIPsForEcsCluster(awsSess *session.Session, clusterName string) []string {
+	instanceIDs := GetInstanceIDsForEcsCluster(awsSess, clusterName)
 
 	svc := ec2.New(awsSess)
 	instanceDetails, err := svc.DescribeInstances(&ec2.DescribeInstancesInput{
@@ -97,11 +97,22 @@ func GetInstanceIPsForCluster(awsSess *session.Session, clusterName string) []st
 		}
 	}
 
-
 	return instanceIPs
 }
 
-func GetPendingTasksCount(awsSess *session.Session, cluster string) int64 {
+func GetPendingEcsTasksCount(awsSess *session.Session, cluster string) int64 {
+	ecsServices := ListServicesForEcsCluster(awsSess, cluster)
+
+	var pendingTasks int64
+
+	for _, service := range ecsServices {
+		pendingTasks += *service.PendingCount
+	}
+
+	return pendingTasks
+}
+
+func ListServicesForEcsCluster(awsSess *session.Session, cluster string) []*ecs.Service {
 	svc := ecs.New(awsSess)
 
 	services, err := svc.ListServices(&ecs.ListServicesInput{
@@ -155,11 +166,99 @@ func GetPendingTasksCount(awsSess *session.Session, cluster string) int64 {
 		os.Exit(1)
 	}
 
-	var pendingTasks int64
+	return descResult.Services
+}
 
-	for _, service := range descResult.Services {
-		pendingTasks += *service.PendingCount
+func GetMemoryCpuNeededForEcsCluster(awsSess *session.Session, cluster string) (int64, int64) {
+	ecsServices := ListServicesForEcsCluster(awsSess, cluster)
+
+	var memoryNeeded int64 = 0
+	var cpuNeeded int64 = 0
+	var largestServiceMemory int64 = 0
+	var largestServiceCpu int64 = 0
+
+	svc := ecs.New(awsSess)
+
+	for _, service := range ecsServices {
+		if *service.DesiredCount > 0 {
+			// fmt.Printf("Looking at service %s, count = %v\n", *service.ServiceName, *service.DesiredCount)
+			taskDef, err := svc.DescribeTaskDefinition(&ecs.DescribeTaskDefinitionInput{
+				TaskDefinition: service.TaskDefinition,
+			})
+			if err != nil {
+				fmt.Printf("Unable to describe task definition %s\n", *service.TaskDefinition)
+				os.Exit(1)
+			}
+
+			var serviceMemory int64 = 0
+			var serviceCpu int64 = 0
+
+			for _, c := range taskDef.TaskDefinition.ContainerDefinitions {
+				// fmt.Printf("    Looking at container %s, needs %v mem and %v cpu\n", *c.Name, *c.Memory, *c.Cpu)
+				serviceMemory += *c.Memory
+				serviceCpu += *c.Cpu
+			}
+
+			if serviceMemory > largestServiceMemory {
+				largestServiceMemory = serviceMemory
+			}
+
+			if serviceCpu > largestServiceCpu {
+				largestServiceCpu = serviceCpu
+			}
+
+			memoryNeeded += serviceMemory * *service.DesiredCount
+			cpuNeeded += serviceCpu * *service.DesiredCount
+		}
 	}
 
-	return pendingTasks
+	// Add back in the largest service memory and cpu needs to ensure there is enough extra capacity
+	// to launch another instance of the largest service for rolling updates
+	memoryNeeded += largestServiceMemory
+	cpuNeeded += largestServiceCpu
+
+	return memoryNeeded, cpuNeeded
+}
+
+func RightSizeAsgForEcsCluster(awsSess *session.Session, cluster string) error {
+	asgName := GetAsgNameForEcsCluster(awsSess, cluster)
+	if asgName == "" {
+		fmt.Println("Unable to find ASG name for ECS cluster ", cluster)
+		os.Exit(1)
+	}
+
+	fmt.Println("ASG found: ", asgName)
+
+	instanceType := GetInstanceTypeForAsg(awsSess, asgName)
+	fmt.Println("ASG uses instance type: ", instanceType)
+
+	memoryNeeded, cpuNeeded := GetMemoryCpuNeededForEcsCluster(awsSess, cluster)
+	fmt.Printf("Memory needed for all services with desired count > 0: %v, CPU needed: %v\n", memoryNeeded, cpuNeeded)
+
+	serversNeeded := HowManyServersNeededForAsg(instanceType, memoryNeeded, cpuNeeded)
+	fmt.Printf("ASG should have %v servers to fit all tasks\n", serversNeeded)
+
+	asgDesired, asgMin, asgMax := GetAsgServerCount(awsSess, asgName)
+	fmt.Printf("ASG server count currently set to: desired = %v, min = %v, max = %v\n", asgDesired, asgMin, asgMax)
+
+	if asgMin < serversNeeded {
+		fmt.Printf("ASG needs to be scaled up by %v servers\n", serversNeeded-asgMin)
+		fmt.Printf("Scaling ASG to %v servers (desired/min/max)...", serversNeeded)
+		err := UpdateAsgServerCount(awsSess, asgName, serversNeeded)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("done.\n")
+	} else if asgMin > serversNeeded {
+		fmt.Printf("ASG can be scaled down by %v servers\n", asgMin-serversNeeded)
+		fmt.Printf("Scaling ASG to %v servers (desired/min/max)...", serversNeeded)
+		err := UpdateAsgServerCount(awsSess, asgName, serversNeeded)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("done.\n")
+	} else {
+		fmt.Printf("Looks like this ASG is already right sized, good day sir.\n")
+	}
+
 }

@@ -1,13 +1,13 @@
 # awsops
-A Go based CLI for common AWS operations
+A Go based CLI and Serverless functions for common AWS operations
 
-This CLI is a bit scrappy and very opinionated for executing operational processes on AWS the way we like to.
+This library is a bit scrappy and very opinionated for executing operational processes on AWS the way we like to.
 
 ## Installation
 If you don't care to modify the source, you can grab a prebuilt binary from the `dist/` folder for your 
 platform and run it directly. 
 
-You can also clone this repo and use `go build` or `go run` to run it. 
+You can also clone this repo and use `go build` or `go run` from the `cli/` folder to run it. 
 
 ## Configuration
 This app makes use of the AWS Go SDK - https://docs.aws.amazon.com/sdk-for-go/api/

@@ -1,0 +1,58 @@
+# For full config options, check the docs:
+#    docs.serverless.com
+
+service: ecs-right-size-cluster
+
+# You can pin your service to only deploy with a specific Serverless version
+# Check out our docs for more details
+# frameworkVersion: "=X.X.X"
+
+provider:
+  name: aws
+  runtime: go1.x
+  timeout: 30
+  versionFunctions: false
+  memorySize: 128
+
+  # you can overwrite defaults here
+  #  stage: dev
+  #  region: us-east-1
+
+  # you can add statements to the Lambda function's IAM Role here
+  iamRoleStatements:
+  - Effect: "Allow"
+    Action:
+      - "autoscaling:DescribeAutoScalingGroups"
+      - "autoscaling:DescribeLaunchConfigurations"
+      - "autoscaling:UpdateAutoScalingGroup"
+      - "ec2:DescribeInstances"
+      - "ecs:DescribeContainerInstances"
+      - "ecs:DescribeServices"
+      - "ecs:DescribeTaskDefinition"
+      - "ecs:ListContainerInstances"
+      - "ecs:ListServices"
+    Resource: "*"
+
+  # you can define service wide environment variables here
+  environment:
+    stage: ${self:custom.stage}
+    namespace: ${self:custom.namespace}
+
+custom:
+  stage: ${opt:stage, self:provider.stage}
+  namespace: ${self:service}_${self:custom.stage}
+
+package:
+  exclude:
+  - ./**
+  include:
+  - ./bin/**
+
+functions:
+  ecsRightSizeCluster:
+    handler: bin/ecsRightSizeCluster
+    events:
+    - schedule: rate(10 minutes) # every 10 minutes
+        input:
+          Region: ${self:provider.region}
+          ClusterNamesCSV: ${env:ClusterNamesCSV}
