@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+
+# exit if any command fails
+set -e
+
 set -x
 
 # array of target os/arch

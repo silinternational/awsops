@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# exit if any command fails
+set -e
+
 # Upgrade Go to 1.10.3
 GO_VERSION=1.10.3
 source /dev/stdin <<< "$(curl -sSL https://raw.githubusercontent.com/codeship/scripts/master/languages/go.sh)"
