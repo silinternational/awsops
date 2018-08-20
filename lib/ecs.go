@@ -261,4 +261,5 @@ func RightSizeAsgForEcsCluster(awsSess *session.Session, cluster string) error {
 		fmt.Printf("Looks like this ASG is already right sized, good day sir.\n")
 	}
 
+	return nil
 }
