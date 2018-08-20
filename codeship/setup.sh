@@ -8,10 +8,8 @@ source /dev/stdin <<< "$(curl -sSL https://raw.githubusercontent.com/codeship/sc
 sudo wget -P /usr/local/bin/ https://raw.githubusercontent.com/silinternational/runny/0.2/runny
 sudo chmod a+x /usr/local/bin/runny
 
-# Update packages and install dependencies
-sudo runny apt-get update -y
-sudo runny apt-get install -y awscli git
+# Install dependencies
 runny go get -u github.com/golang/dep/cmd/dep
 runny go get github.com/mitchellh/gox
-
+cd ~/src/github.com/silinternational/awsops
 dep ensure
