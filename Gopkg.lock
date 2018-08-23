@@ -2,10 +2,9 @@
 
 
 [[projects]]
-  digest = "1:f0c0a49ebbd24f487b069e1b5e42e4c48f848734b2a7af73bae08418859106b9"
+  digest = "1:7637de64e2bad97a7b9d1665e9cb0f9b709b1ef28d09232da908ead542bf89f0"
   name = "github.com/aws/aws-lambda-go"
   packages = [
-    "events",
     "lambda",
     "lambda/messages",
     "lambdacontext",
@@ -15,7 +14,7 @@
   version = "v1.4.0"
 
 [[projects]]
-  digest = "1:df1b7aa84f53f6e0c2fe8532d8781bfa92b8cd899f97701b217950d53a920a69"
+  digest = "1:95281d082df0745413b3c4a49bc47656cc1846b665e5aba06d998b6386b08d66"
   name = "github.com/aws/aws-sdk-go"
   packages = [
     "aws",
@@ -46,15 +45,17 @@
     "private/protocol/query",
     "private/protocol/query/queryutil",
     "private/protocol/rest",
+    "private/protocol/restjson",
     "private/protocol/xml/xmlutil",
     "service/autoscaling",
     "service/ec2",
     "service/ecs",
+    "service/lambda",
     "service/sts",
   ]
   pruneopts = "UT"
-  revision = "daed0c76021ea9c4e659e3ec80bcd2d657297100"
-  version = "v1.15.12"
+  revision = "e21dfa909e14ce93f88f1f3505764bc4952a11be"
+  version = "v1.15.18"
 
 [[projects]]
   digest = "1:abeb38ade3f32a92943e5be54f55ed6d6e3b6602761d74b4aab4c9dd45c18abd"
@@ -137,6 +138,14 @@
   pruneopts = "UT"
   revision = "c01d1270ff3e442a8a57cddc1c92dc1138598194"
   version = "v1.2.0"
+
+[[projects]]
+  digest = "1:40e195917a951a8bf867cd05de2a46aaf1806c50cf92eebf4c16f78cd196f747"
+  name = "github.com/pkg/errors"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "645ef00459ed84a119197bfb8d8205042c6df63d"
+  version = "v0.8.0"
 
 [[projects]]
   digest = "1:bd1ae00087d17c5a748660b8e89e1043e1e5479d0fea743352cda2f8dd8c4f84"
@@ -224,7 +233,6 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
-    "github.com/aws/aws-lambda-go/events",
     "github.com/aws/aws-lambda-go/lambda",
     "github.com/aws/aws-sdk-go/aws",
     "github.com/aws/aws-sdk-go/aws/awserr",
@@ -233,7 +241,9 @@
     "github.com/aws/aws-sdk-go/service/autoscaling",
     "github.com/aws/aws-sdk-go/service/ec2",
     "github.com/aws/aws-sdk-go/service/ecs",
+    "github.com/aws/aws-sdk-go/service/lambda",
     "github.com/mitchellh/go-homedir",
+    "github.com/pkg/errors",
     "github.com/spf13/cobra",
     "github.com/spf13/viper",
   ]

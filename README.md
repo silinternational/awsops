@@ -56,6 +56,7 @@ Usage:
 Available Commands:
   listInstanceIPs  List Instance IPs for ECS Cluster
   replaceInstances Gracefully replace EC2 instances for given ECS cluster
+  rightSizeCluster Scale ASG for ECS cluster to minimum needed servers
 
 Flags:
   -c, --cluster string   ECS cluster name
@@ -95,6 +96,28 @@ Usage:
 
 Flags:
   -h, --help   help for replaceInstances
+
+Global Flags:
+  -c, --cluster string   ECS cluster name
+      --config string    config file (default is $HOME/.awsops.yaml)
+  -p, --profile string   AWS shared credentials profile to use
+  -r, --region string    AWS shared credentials profile to use (default "us-east-1")
+```
+
+```
+$ awsops ecs rightSizeCluster --help
+This command calculates total memory and CPU needed
+for all services in the given ECS cluster and then adjusts
+instance count in the ASG based on instance type/size to
+support running all tasks with as few servers as is needed.
+
+This function may scale a cluster up or down depending on services.
+
+Usage:
+  awsops ecs rightSizeCluster [flags]
+
+Flags:
+  -h, --help   help for rightSizeCluster
 
 Global Flags:
   -c, --cluster string   ECS cluster name
@@ -159,3 +182,7 @@ x/2vwNgKlFWr68smFLupuf4qCMmVU516RUfmg/JDbKovsd6DRHVizfVp8jes
 =b8aO
 -----END PGP PUBLIC KEY BLOCK-----
 ```
+
+## Download Binaries
+If you prefer not to build/compile this source yourself, you can find prebuilt binaries for several platforms at:
+[https://silintl-awsops-download.s3.amazonaws.com/index.html](https://silintl-awsops-download.s3.amazonaws.com/index.html)
