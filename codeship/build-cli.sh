@@ -2,7 +2,6 @@
 
 # exit if any command fails
 set -e
-
 set -x
 
 # array of target os/arch
@@ -10,8 +9,8 @@ targets=( "darwin/amd64" "linux/amd64" "linux/arm" "windows/386" )
 distPath="dist"
 
 # download gpg keys to use for signing
-runny aws s3 cp s3://$KEY_BUCKET/secret.key ./
-runny gpg --import secret.key
+aws s3 cp s3://$KEY_BUCKET/secret.key ./
+gpg --import secret.key
 
 cd cli/
 for target in "${targets[@]}"
@@ -28,7 +27,7 @@ do
     fi
 
     # Sign file with GPG
-    runny gpg --yes -a -o "${fileToSign}.sig" --detach-sig $fileToSign
+    gpg --yes -a -o "${fileToSign}.sig" --detach-sig $fileToSign
 
 done
 
