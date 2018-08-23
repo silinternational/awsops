@@ -23,6 +23,7 @@ FUNCTIONS=( "ecs-right-size-cluster" )
 for func in "${FUNCTIONS[@]}"
 do
     echo "Deploying function ${func}..."
-    cd $SCRIPTDIR/$func
+    cd $SCRIPTDIR/../lambdas/$func
+    go build -ldflags="-s -w"
     serverless deploy -v --stage $STAGE
 done

@@ -46,13 +46,14 @@ package:
   exclude:
   - ./**
   include:
-  - ./bin/**
+  - ./ecs-right-size-cluster
 
 functions:
   ecsRightSizeCluster:
-    handler: bin/ecsRightSizeCluster
+    handler: ecs-right-size-cluster
     events:
-    - schedule: rate(10 minutes) # every 10 minutes
+    - schedule:
+        rate: rate(10 minutes) # every 10 minutes
         input:
           Region: ${self:provider.region}
           ClusterNamesCSV: ${env:ClusterNamesCSV}
