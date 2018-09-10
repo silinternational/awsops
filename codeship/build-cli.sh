@@ -12,7 +12,6 @@ distPath="dist"
 aws s3 cp s3://$KEY_BUCKET/secret.key ./
 gpg --import secret.key
 
-cd cli/
 for target in "${targets[@]}"
 do
     # Build binary using gox
@@ -34,4 +33,3 @@ done
 # Push dist/ to S3 under folder for CI_BRANCH (ex: develop or 1.2.3)
 CI_BRANCH=${CI_BRANCH:="unknown"}
 aws s3 sync --acl public-read dist/ s3://$DOWNLOAD_BUCKET/$CI_BRANCH/
-cd ../

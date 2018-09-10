@@ -14,7 +14,7 @@
 
 package main
 
-import "github.com/silinternational/awsops/cli/cmd"
+import "github.com/silinternational/awsops/cmd"
 
 func main() {
 	cmd.Execute()
