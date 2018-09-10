@@ -19,6 +19,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var atLeastServiceDesiredCount bool
+
 // rightSizeClusterCmd represents the scaleCluster command
 var rightSizeClusterCmd = &cobra.Command{
 	Use:   "rightSizeCluster",
@@ -31,7 +33,7 @@ support running all tasks with as few servers as is needed.
 This function may scale a cluster up or down depending on services.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		initAwsSess()
-		lib.RightSizeAsgForEcsCluster(AwsSess, cluster)
+		lib.RightSizeAsgForEcsCluster(AwsSess, cluster, atLeastServiceDesiredCount)
 	},
 }
 
@@ -46,5 +48,5 @@ func init() {
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
-	// rightSizeClusterCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	rightSizeClusterCmd.Flags().BoolVar(&atLeastServiceDesiredCount, "atLeastServiceDesiredCount", false, "Ensure at least as many EC2 instances as largest ECS service desired count.")
 }

@@ -169,9 +169,7 @@ func ListServicesForEcsCluster(awsSess *session.Session, cluster string) []*ecs.
 	return descResult.Services
 }
 
-func GetMemoryCpuNeededForEcsCluster(awsSess *session.Session, cluster string) (int64, int64) {
-	ecsServices := ListServicesForEcsCluster(awsSess, cluster)
-
+func GetMemoryCpuNeededForEcsServices(awsSess *session.Session, ecsServices []*ecs.Service) (int64, int64) {
 	var memoryNeeded int64 = 0
 	var cpuNeeded int64 = 0
 	var largestServiceMemory int64 = 0
@@ -220,7 +218,7 @@ func GetMemoryCpuNeededForEcsCluster(awsSess *session.Session, cluster string) (
 	return memoryNeeded, cpuNeeded
 }
 
-func RightSizeAsgForEcsCluster(awsSess *session.Session, cluster string) error {
+func RightSizeAsgForEcsCluster(awsSess *session.Session, cluster string, atLeastServiceDesiredCount bool) error {
 	asgName := GetAsgNameForEcsCluster(awsSess, cluster)
 	if asgName == "" {
 		fmt.Println("Unable to find ASG name for ECS cluster ", cluster)
@@ -232,11 +230,19 @@ func RightSizeAsgForEcsCluster(awsSess *session.Session, cluster string) error {
 	instanceType := GetInstanceTypeForAsg(awsSess, asgName)
 	fmt.Println("ASG uses instance type: ", instanceType)
 
-	memoryNeeded, cpuNeeded := GetMemoryCpuNeededForEcsCluster(awsSess, cluster)
+	ecsServices := ListServicesForEcsCluster(awsSess, cluster)
+	memoryNeeded, cpuNeeded := GetMemoryCpuNeededForEcsServices(awsSess, ecsServices)
 	fmt.Printf("Memory needed for all services with desired count > 0: %v, CPU needed: %v\n", memoryNeeded, cpuNeeded)
 
 	serversNeeded := HowManyServersNeededForAsg(instanceType, memoryNeeded, cpuNeeded)
 	fmt.Printf("ASG should have %v servers to fit all tasks\n", serversNeeded)
+
+	// If an ECS service has a desired count > serversNeeded, and atLeastServiceDesiredCount is true, set serversNeeded to
+	// largest ecs service desired count value
+	largestDesiredCount := GetLargestDesiredCountFromEcsServices(ecsServices)
+	if largestDesiredCount > serversNeeded && atLeastServiceDesiredCount {
+		serversNeeded = largestDesiredCount
+	}
 
 	asgDesired, asgMin, asgMax := GetAsgServerCount(awsSess, asgName)
 	fmt.Printf("ASG server count currently set to: desired = %v, min = %v, max = %v\n", asgDesired, asgMin, asgMax)
@@ -262,4 +268,16 @@ func RightSizeAsgForEcsCluster(awsSess *session.Session, cluster string) error {
 	}
 
 	return nil
+}
+
+func GetLargestDesiredCountFromEcsServices(ecsServices []*ecs.Service) int64 {
+	largestDesiredCount := int64(0)
+
+	for _, service := range ecsServices {
+		if *service.DesiredCount > 0 {
+			largestDesiredCount = *service.DesiredCount
+		}
+	}
+
+	return largestDesiredCount
 }
