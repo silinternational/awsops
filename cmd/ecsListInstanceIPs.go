@@ -15,9 +15,9 @@
 package cmd
 
 import (
-	"github.com/spf13/cobra"
-	"github.com/silinternational/awsops/lib"
 	"fmt"
+	"github.com/silinternational/awsops/lib"
+	"github.com/spf13/cobra"
 	"strings"
 )
 
@@ -25,11 +25,11 @@ import (
 var listInstanceIPsCmd = &cobra.Command{
 	Use:   "listInstanceIPs",
 	Short: "List Instance IPs for ECS Cluster",
-	Long: "Command returns a space separated list of IP addresses for instances in an ECS cluster",
+	Long:  "Command returns a space separated list of IP addresses for instances in an ECS cluster",
 	Run: func(cmd *cobra.Command, args []string) {
 		initAwsSess()
 
-		instanceIPs := lib.GetInstanceIPsForCluster(AwsSess, cluster)
+		instanceIPs := lib.GetInstanceIPsForEcsCluster(AwsSess, cluster)
 		fmt.Println(strings.Join(instanceIPs, " "))
 	},
 }
