@@ -15,7 +15,7 @@ COPY ./ /go/src/github.com/silinternational/awsops/
 WORKDIR /go/src/github.com/silinternational/awsops
 
 RUN dep ensure
-RUN go build -ldflags="-s -w" -o awsops cli/main.go
+RUN go build -ldflags="-s -w" -o awsops
 
 FROM alpine:latest
 RUN apk update && \
