@@ -178,36 +178,38 @@ func GetMemoryCpuNeededForEcsServices(awsSess *session.Session, ecsServices []*e
 	svc := ecs.New(awsSess)
 
 	for _, service := range ecsServices {
-		if *service.DesiredCount > 0 {
-			// fmt.Printf("Looking at service %s, count = %v\n", *service.ServiceName, *service.DesiredCount)
-			taskDef, err := svc.DescribeTaskDefinition(&ecs.DescribeTaskDefinitionInput{
-				TaskDefinition: service.TaskDefinition,
-			})
-			if err != nil {
-				fmt.Printf("Unable to describe task definition %s\n", *service.TaskDefinition)
-				os.Exit(1)
-			}
-
-			var serviceMemory int64 = 0
-			var serviceCpu int64 = 0
-
-			for _, c := range taskDef.TaskDefinition.ContainerDefinitions {
-				// fmt.Printf("    Looking at container %s, needs %v mem and %v cpu\n", *c.Name, *c.Memory, *c.Cpu)
-				serviceMemory += *c.Memory
-				serviceCpu += *c.Cpu
-			}
-
-			if serviceMemory > largestServiceMemory {
-				largestServiceMemory = serviceMemory
-			}
-
-			if serviceCpu > largestServiceCpu {
-				largestServiceCpu = serviceCpu
-			}
-
-			memoryNeeded += serviceMemory * *service.DesiredCount
-			cpuNeeded += serviceCpu * *service.DesiredCount
+		if *service.DesiredCount == 0 {
+			continue
 		}
+
+		// fmt.Printf("Looking at service %s, count = %v\n", *service.ServiceName, *service.DesiredCount)
+		taskDef, err := svc.DescribeTaskDefinition(&ecs.DescribeTaskDefinitionInput{
+			TaskDefinition: service.TaskDefinition,
+		})
+		if err != nil {
+			fmt.Printf("Unable to describe task definition %s\n", *service.TaskDefinition)
+			os.Exit(1)
+		}
+
+		var serviceMemory int64 = 0
+		var serviceCpu int64 = 0
+
+		for _, c := range taskDef.TaskDefinition.ContainerDefinitions {
+			// fmt.Printf("    Looking at container %s, needs %v mem and %v cpu\n", *c.Name, *c.Memory, *c.Cpu)
+			serviceMemory += *c.Memory
+			serviceCpu += *c.Cpu
+		}
+
+		if serviceMemory > largestServiceMemory {
+			largestServiceMemory = serviceMemory
+		}
+
+		if serviceCpu > largestServiceCpu {
+			largestServiceCpu = serviceCpu
+		}
+
+		memoryNeeded += serviceMemory * *service.DesiredCount
+		cpuNeeded += serviceCpu * *service.DesiredCount
 	}
 
 	// Add back in the largest service memory and cpu needs to ensure there is enough extra capacity
@@ -249,7 +251,7 @@ func RightSizeAsgForEcsCluster(awsSess *session.Session, cluster string, atLeast
 
 	if asgMin < serversNeeded {
 		fmt.Printf("ASG needs to be scaled up by %v servers\n", serversNeeded-asgMin)
-		fmt.Printf("Scaling ASG to %v servers (desired/min/max)...", serversNeeded)
+		fmt.Printf("Scaling ASG to %v servers...", serversNeeded)
 		err := UpdateAsgServerCount(awsSess, asgName, serversNeeded)
 		if err != nil {
 			return err
@@ -274,7 +276,7 @@ func GetLargestDesiredCountFromEcsServices(ecsServices []*ecs.Service) int64 {
 	largestDesiredCount := int64(0)
 
 	for _, service := range ecsServices {
-		if *service.DesiredCount > 0 {
+		if *service.DesiredCount > largestDesiredCount {
 			largestDesiredCount = *service.DesiredCount
 		}
 	}
