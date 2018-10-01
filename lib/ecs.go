@@ -115,8 +115,38 @@ func GetPendingEcsTasksCount(awsSess *session.Session, cluster string) int64 {
 func ListServicesForEcsCluster(awsSess *session.Session, cluster string) []*ecs.Service {
 	svc := ecs.New(awsSess)
 
-	services, err := svc.ListServices(&ecs.ListServicesInput{
+	var allServices []*ecs.Service
+	err := svc.ListServicesPages(&ecs.ListServicesInput{
 		Cluster: aws.String(cluster),
+	}, func(page *ecs.ListServicesOutput, lastPage bool) bool {
+		services, err := DescribeEcsServicesForArns(awsSess, page.ServiceArns, cluster)
+		if err != nil {
+			if aerr, ok := err.(awserr.Error); ok {
+				switch aerr.Code() {
+				case ecs.ErrCodeServerException:
+					fmt.Println(ecs.ErrCodeServerException, aerr.Error())
+				case ecs.ErrCodeClientException:
+					fmt.Println(ecs.ErrCodeClientException, aerr.Error())
+				case ecs.ErrCodeInvalidParameterException:
+					fmt.Println(ecs.ErrCodeInvalidParameterException, aerr.Error())
+				case ecs.ErrCodeClusterNotFoundException:
+					fmt.Println(ecs.ErrCodeClusterNotFoundException, aerr.Error())
+				default:
+					fmt.Println(aerr.Error())
+				}
+			} else {
+				// Print the error, cast err to awserr.Error to get the Code and
+				// Message from an error.
+				fmt.Println(err.Error())
+			}
+			os.Exit(1)
+		}
+
+		for _, service := range services {
+			allServices = append(allServices, service)
+		}
+
+		return !lastPage
 	})
 	if err != nil {
 		if aerr, ok := err.(awserr.Error); ok {
@@ -139,34 +169,22 @@ func ListServicesForEcsCluster(awsSess *session.Session, cluster string) []*ecs.
 		}
 		os.Exit(1)
 	}
+
+	return allServices
+}
+
+func DescribeEcsServicesForArns(awsSess *session.Session, serviceArns []*string, cluster string) ([]*ecs.Service, error) {
+	svc := ecs.New(awsSess)
 
 	descResult, err := svc.DescribeServices(&ecs.DescribeServicesInput{
 		Cluster:  aws.String(cluster),
-		Services: services.ServiceArns,
+		Services: serviceArns,
 	})
 	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			switch aerr.Code() {
-			case ecs.ErrCodeServerException:
-				fmt.Println(ecs.ErrCodeServerException, aerr.Error())
-			case ecs.ErrCodeClientException:
-				fmt.Println(ecs.ErrCodeClientException, aerr.Error())
-			case ecs.ErrCodeInvalidParameterException:
-				fmt.Println(ecs.ErrCodeInvalidParameterException, aerr.Error())
-			case ecs.ErrCodeClusterNotFoundException:
-				fmt.Println(ecs.ErrCodeClusterNotFoundException, aerr.Error())
-			default:
-				fmt.Println(aerr.Error())
-			}
-		} else {
-			// Print the error, cast err to awserr.Error to get the Code and
-			// Message from an error.
-			fmt.Println(err.Error())
-		}
-		os.Exit(1)
+		return []*ecs.Service{}, err
 	}
 
-	return descResult.Services
+	return descResult.Services, nil
 }
 
 func GetMemoryCpuNeededForEcsServices(awsSess *session.Session, ecsServices []*ecs.Service) (int64, int64) {
@@ -176,7 +194,7 @@ func GetMemoryCpuNeededForEcsServices(awsSess *session.Session, ecsServices []*e
 	var largestServiceCpu int64 = 0
 
 	svc := ecs.New(awsSess)
-
+	fmt.Printf("Found %v services\n", len(ecsServices))
 	for _, service := range ecsServices {
 		if *service.DesiredCount == 0 {
 			continue
@@ -212,11 +230,14 @@ func GetMemoryCpuNeededForEcsServices(awsSess *session.Session, ecsServices []*e
 		cpuNeeded += serviceCpu * *service.DesiredCount
 	}
 
+	fmt.Printf("mem/cpu needed: %v/%v\n", memoryNeeded, cpuNeeded)
+	fmt.Printf("largest mem/cpu: %v/%v\n", largestServiceMemory, largestServiceCpu)
+
 	// Add back in the largest service memory and cpu needs to ensure there is enough extra capacity
 	// to launch another instance of the largest service for rolling updates
 	memoryNeeded += largestServiceMemory
 	cpuNeeded += largestServiceCpu
-
+	fmt.Printf("total mem/cpu needed: %v/%v\n", memoryNeeded, cpuNeeded)
 	return memoryNeeded, cpuNeeded
 }
 
