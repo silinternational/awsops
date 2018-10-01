@@ -194,7 +194,7 @@ func GetMemoryCpuNeededForEcsServices(awsSess *session.Session, ecsServices []*e
 	var largestServiceCpu int64 = 0
 
 	svc := ecs.New(awsSess)
-	fmt.Printf("Found %v services\n", len(ecsServices))
+
 	for _, service := range ecsServices {
 		if *service.DesiredCount == 0 {
 			continue
@@ -230,14 +230,11 @@ func GetMemoryCpuNeededForEcsServices(awsSess *session.Session, ecsServices []*e
 		cpuNeeded += serviceCpu * *service.DesiredCount
 	}
 
-	fmt.Printf("mem/cpu needed: %v/%v\n", memoryNeeded, cpuNeeded)
-	fmt.Printf("largest mem/cpu: %v/%v\n", largestServiceMemory, largestServiceCpu)
-
 	// Add back in the largest service memory and cpu needs to ensure there is enough extra capacity
 	// to launch another instance of the largest service for rolling updates
 	memoryNeeded += largestServiceMemory
 	cpuNeeded += largestServiceCpu
-	fmt.Printf("total mem/cpu needed: %v/%v\n", memoryNeeded, cpuNeeded)
+
 	return memoryNeeded, cpuNeeded
 }
 
