@@ -3,7 +3,6 @@ package lib
 import (
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/ecs"
@@ -16,24 +15,7 @@ func GetInstanceListForEcsCluster(awsSess *session.Session, clusterName string) 
 		Cluster: aws.String(clusterName),
 	})
 	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			switch aerr.Code() {
-			case ecs.ErrCodeServerException:
-				fmt.Println(ecs.ErrCodeServerException, aerr.Error())
-			case ecs.ErrCodeClientException:
-				fmt.Println(ecs.ErrCodeClientException, aerr.Error())
-			case ecs.ErrCodeInvalidParameterException:
-				fmt.Println(ecs.ErrCodeInvalidParameterException, aerr.Error())
-			case ecs.ErrCodeClusterNotFoundException:
-				fmt.Println(ecs.ErrCodeClusterNotFoundException, aerr.Error())
-			default:
-				fmt.Println(aerr.Error())
-			}
-		} else {
-			// Print the error, cast err to awserr.Error to get the Code and
-			// Message from an error.
-			fmt.Println(err.Error())
-		}
+		fmt.Println(err.Error())
 		os.Exit(1)
 	}
 
@@ -42,24 +24,7 @@ func GetInstanceListForEcsCluster(awsSess *session.Session, clusterName string) 
 		ContainerInstances: listResult.ContainerInstanceArns,
 	})
 	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			switch aerr.Code() {
-			case ecs.ErrCodeServerException:
-				fmt.Println(ecs.ErrCodeServerException, aerr.Error())
-			case ecs.ErrCodeClientException:
-				fmt.Println(ecs.ErrCodeClientException, aerr.Error())
-			case ecs.ErrCodeInvalidParameterException:
-				fmt.Println(ecs.ErrCodeInvalidParameterException, aerr.Error())
-			case ecs.ErrCodeClusterNotFoundException:
-				fmt.Println(ecs.ErrCodeClusterNotFoundException, aerr.Error())
-			default:
-				fmt.Println(aerr.Error())
-			}
-		} else {
-			// Print the error, cast err to awserr.Error to get the Code and
-			// Message from an error.
-			fmt.Println(err.Error())
-		}
+		fmt.Println(err.Error())
 		os.Exit(1)
 	}
 
@@ -115,58 +80,42 @@ func GetPendingEcsTasksCount(awsSess *session.Session, cluster string) int64 {
 func ListServicesForEcsCluster(awsSess *session.Session, cluster string) []*ecs.Service {
 	svc := ecs.New(awsSess)
 
-	services, err := svc.ListServices(&ecs.ListServicesInput{
+	var allServices []*ecs.Service
+	err := svc.ListServicesPages(&ecs.ListServicesInput{
 		Cluster: aws.String(cluster),
+	}, func(page *ecs.ListServicesOutput, lastPage bool) bool {
+		services, err := DescribeEcsServicesForArns(awsSess, page.ServiceArns, cluster)
+		if err != nil {
+			fmt.Println(err.Error())
+			os.Exit(1)
+		}
+
+		for _, service := range services {
+			allServices = append(allServices, service)
+		}
+
+		return !lastPage
 	})
 	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			switch aerr.Code() {
-			case ecs.ErrCodeServerException:
-				fmt.Println(ecs.ErrCodeServerException, aerr.Error())
-			case ecs.ErrCodeClientException:
-				fmt.Println(ecs.ErrCodeClientException, aerr.Error())
-			case ecs.ErrCodeInvalidParameterException:
-				fmt.Println(ecs.ErrCodeInvalidParameterException, aerr.Error())
-			case ecs.ErrCodeClusterNotFoundException:
-				fmt.Println(ecs.ErrCodeClusterNotFoundException, aerr.Error())
-			default:
-				fmt.Println(aerr.Error())
-			}
-		} else {
-			// Print the error, cast err to awserr.Error to get the Code and
-			// Message from an error.
-			fmt.Println(err.Error())
-		}
+		fmt.Println(err.Error())
 		os.Exit(1)
 	}
+
+	return allServices
+}
+
+func DescribeEcsServicesForArns(awsSess *session.Session, serviceArns []*string, cluster string) ([]*ecs.Service, error) {
+	svc := ecs.New(awsSess)
 
 	descResult, err := svc.DescribeServices(&ecs.DescribeServicesInput{
 		Cluster:  aws.String(cluster),
-		Services: services.ServiceArns,
+		Services: serviceArns,
 	})
 	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			switch aerr.Code() {
-			case ecs.ErrCodeServerException:
-				fmt.Println(ecs.ErrCodeServerException, aerr.Error())
-			case ecs.ErrCodeClientException:
-				fmt.Println(ecs.ErrCodeClientException, aerr.Error())
-			case ecs.ErrCodeInvalidParameterException:
-				fmt.Println(ecs.ErrCodeInvalidParameterException, aerr.Error())
-			case ecs.ErrCodeClusterNotFoundException:
-				fmt.Println(ecs.ErrCodeClusterNotFoundException, aerr.Error())
-			default:
-				fmt.Println(aerr.Error())
-			}
-		} else {
-			// Print the error, cast err to awserr.Error to get the Code and
-			// Message from an error.
-			fmt.Println(err.Error())
-		}
-		os.Exit(1)
+		return []*ecs.Service{}, err
 	}
 
-	return descResult.Services
+	return descResult.Services, nil
 }
 
 func GetMemoryCpuNeededForEcsServices(awsSess *session.Session, ecsServices []*ecs.Service) (int64, int64) {

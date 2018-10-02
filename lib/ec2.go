@@ -6,7 +6,7 @@ type InstanceType struct {
 }
 
 var SingleCPUUnits int64 = 1024
-var MbInGb int64 = 1024
+var MbInGb int64 = 985 // only 985 out of 1024 is available for use due to ECS agent
 
 var InstanceTypes = map[string]InstanceType{
 	"t2.nano": {

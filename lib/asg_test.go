@@ -13,7 +13,7 @@ func TestHowManyServersNeededFor(t *testing.T) {
 			MemNeeded:   3000,
 			CPUNeeded:   1024,
 			ServerType:  "t2.micro",
-			ExpectedNum: 3,
+			ExpectedNum: 4,
 		},
 		{
 			MemNeeded:   3000,
@@ -31,7 +31,7 @@ func TestHowManyServersNeededFor(t *testing.T) {
 			MemNeeded:   2047,
 			CPUNeeded:   1024,
 			ServerType:  "t2.micro",
-			ExpectedNum: 2,
+			ExpectedNum: 3,
 		},
 		{
 			MemNeeded:   2047,
