@@ -1,5 +1,5 @@
-buildcli:
-	cd cli && gox -arch="amd64" -os="linux windows darwin" -output="../dist/{{.OS}}/{{.Arch}}/awsops"
+builddist:
+	goreleaser release --snapshot --skip-publish
 
 test:
 	go test -cover
