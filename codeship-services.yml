@@ -3,11 +3,11 @@ app:
     image: silintl/awsops
     dockerfile_path: Dockerfile
   cached: true
-  working_dir: /go/src/github.com/silinternational/awsops
+  working_dir: /src
 
 test:
   build:
     dockerfile_path: codeship/Dockerfile
   cached: false
-  working_dir: /go/src/github.com/silinternational/awsops
+  working_dir: /src
   encrypted_env_file: aws.env.encrypted

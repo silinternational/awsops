@@ -2,10 +2,6 @@
   service: test
   command: go test ./...
 
-- name: buildpushcli
-  service: test
-  command: ./codeship/build-cli.sh
-
 - name: push_branch
   service: app
   type: push
