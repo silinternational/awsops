@@ -1,4 +1,4 @@
-FROM golang:latest as builder
+FROM golang:1.16 as builder
 
 # Ensure go build env is correct
 ENV GOOS linux
