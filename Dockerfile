@@ -14,7 +14,7 @@ WORKDIR /src
 RUN go get ./...
 RUN go build -ldflags="-s -w" -o awsops
 
-FROM alpine:latest
+FROM alpine:3
 RUN apk update && \
     apk add ca-certificates && \
     rm -rf /var/cache/apk/*
