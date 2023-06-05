@@ -2,13 +2,14 @@ package lib
 
 import (
 	"fmt"
+	"math"
+	"os"
+	"time"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/autoscaling"
 	"github.com/aws/aws-sdk-go/service/ec2"
-	"math"
-	"os"
-	"time"
 )
 
 func GetAsgNameForEcsCluster(awsSess *session.Session, cluster string) string {
@@ -73,28 +74,79 @@ func GetInstanceListForAsg(awsSess *session.Session, asgName string) []*string {
 	return instanceIds
 }
 
-func GetInstanceTypeForAsg(awsSess *session.Session, asgName string) string {
-	svc := autoscaling.New(awsSess)
-
-	asg := GetAsg(awsSess, asgName)
-
+func GetInstanceTypeFromLaunchConfiguration(awsSess *session.Session, launchConfigurationName string) string {
 	input := &autoscaling.DescribeLaunchConfigurationsInput{
 		LaunchConfigurationNames: []*string{
-			aws.String(*asg.LaunchConfigurationName),
+			aws.String(launchConfigurationName),
 		},
 	}
 
-	lc, err := svc.DescribeLaunchConfigurations(input)
+	lc, err := autoscaling.New(awsSess).DescribeLaunchConfigurations(input)
 	if err != nil {
-		fmt.Println("Unable to describe launch configuration, err: ", err.Error())
+		fmt.Println("Unable to describe launch configuration: ", err.Error())
+		os.Exit(1)
 	}
 
 	if len(lc.LaunchConfigurations) != 1 {
-		fmt.Println("DescribeLaunchConfigurations did not return expected number of results. Expected: 1, Actual: ", len(lc.LaunchConfigurations))
+		fmt.Println("Expected one Launch Configuration, received ", len(lc.LaunchConfigurations))
 		os.Exit(1)
 	}
 
 	return *lc.LaunchConfigurations[0].InstanceType
+}
+
+func GetInstanceTypeFromLaunchTemplate(awsSess *session.Session, launchTemplateName string) string {
+	input := &ec2.DescribeLaunchTemplatesInput{
+		LaunchTemplateNames: []*string{
+			aws.String(launchTemplateName),
+		},
+	}
+
+	ec2Client := ec2.New(awsSess)
+
+	lt, err := ec2Client.DescribeLaunchTemplates(input)
+	if err != nil {
+		fmt.Println("Unable to describe Launch Template, err: ", err.Error())
+		os.Exit(1)
+	}
+
+	if len(lt.LaunchTemplates) != 1 {
+		fmt.Println("Expected one Launch Template, found ", len(lt.LaunchTemplates))
+		os.Exit(1)
+	}
+
+	ltvInput := ec2.DescribeLaunchTemplateVersionsInput{
+		LaunchTemplateId: lt.LaunchTemplates[0].LaunchTemplateId,
+		Versions:         []*string{aws.String("$Latest")},
+	}
+	ltv, err := ec2Client.DescribeLaunchTemplateVersions(&ltvInput)
+	if err != nil {
+		fmt.Println("Unable to describe Launch Template version, error: ", err.Error())
+		os.Exit(1)
+	}
+
+	if len(ltv.LaunchTemplateVersions) != 1 {
+		fmt.Println(`Expected one "$Latest" Launch Template version, received `, len(lt.LaunchTemplates))
+		os.Exit(1)
+	}
+
+	return *ltv.LaunchTemplateVersions[0].LaunchTemplateData.InstanceType
+}
+
+func GetInstanceTypeForAsg(awsSess *session.Session, asgName string) string {
+	asg := GetAsg(awsSess, asgName)
+
+	if asg.LaunchConfigurationName != nil {
+		return GetInstanceTypeFromLaunchConfiguration(awsSess, *asg.LaunchConfigurationName)
+	}
+
+	if asg.LaunchTemplate != nil {
+		return GetInstanceTypeFromLaunchTemplate(awsSess, *asg.LaunchTemplate.LaunchTemplateName)
+	}
+
+	fmt.Println("Unable to determine the ASG instance type. No Launch Template nor Launch Configuration is defined.")
+	os.Exit(1)
+	return ""
 }
 
 func HowManyServersNeededForAsg(serverType string, memory, cpu int64) int64 {

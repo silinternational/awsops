@@ -1,4 +1,5 @@
-FROM golang:latest
+# Ensure this version tracks with go.mod and /Dockerfile
+FROM golang:1.19
 
 RUN apt-get update && apt-get install -y awscli
 
