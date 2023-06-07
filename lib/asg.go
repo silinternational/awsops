@@ -159,6 +159,18 @@ func HowManyServersNeededForAsg(serverType string, resourcesNeeded ResourceSizes
 		os.Exit(1)
 	}
 
+	if resourcesNeeded.LargestMemory > instanceSpecs.MemoryMb {
+		fmt.Printf("Configured instance type is not large enough. Available memory is %d, but largest task needs %d",
+			instanceSpecs.MemoryMb, resourcesNeeded.LargestMemory)
+		os.Exit(1)
+	}
+
+	if resourcesNeeded.LargestCPU > instanceSpecs.CPUUnits {
+		fmt.Printf("Configured instance type is not large enough. Available CPU is %d, but largest task needs %d",
+			instanceSpecs.CPUUnits, resourcesNeeded.LargestCPU)
+		os.Exit(1)
+	}
+
 	// Some memory in each instance cannot be used because no container can be placed in the last portion available.
 	// This assumes the best-case container placement.
 	usableMemory := max(1, instanceSpecs.MemoryMb-resourcesNeeded.SmallestMemory)
