@@ -14,7 +14,7 @@ const (
 var InstanceTypes = map[string]InstanceType{
 	"t2.nano": {
 		CPUUnits: 1 * SingleCPUUnits,
-		MemoryMb: 512 - AgentSize,
+		MemoryMb: MbInGb/2 - AgentSize,
 	},
 	"t2.micro": {
 		CPUUnits: 1 * SingleCPUUnits,
@@ -42,7 +42,7 @@ var InstanceTypes = map[string]InstanceType{
 	},
 	"t3.nano": {
 		CPUUnits: 2 * SingleCPUUnits,
-		MemoryMb: 512 - AgentSize,
+		MemoryMb: MbInGb/2 - AgentSize,
 	},
 	"t3.micro": {
 		CPUUnits: 2 * SingleCPUUnits,
