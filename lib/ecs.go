@@ -189,8 +189,8 @@ func RightSizeAsgForEcsCluster(awsSess *session.Session, cluster string, atLeast
 
 	// If an ECS service has a desired count > serversNeeded, and atLeastServiceDesiredCount is true, set serversNeeded to
 	// largest ecs service desired count value
-	largestDesiredCount := GetLargestDesiredCountFromEcsServices(ecsServices)
 	if atLeastServiceDesiredCount {
+		largestDesiredCount := GetLargestDesiredCountFromEcsServices(ecsServices)
 		serversNeeded = max(largestDesiredCount, serversNeeded)
 	}
 
