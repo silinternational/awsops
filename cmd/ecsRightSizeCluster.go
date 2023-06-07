@@ -15,8 +15,11 @@
 package cmd
 
 import (
-	"github.com/silinternational/awsops/lib"
+	"os"
+
 	"github.com/spf13/cobra"
+
+	"github.com/silinternational/awsops/lib"
 )
 
 var atLeastServiceDesiredCount bool
@@ -33,7 +36,10 @@ support running all tasks with as few servers as is needed.
 This function may scale a cluster up or down depending on services.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		initAwsSess()
-		lib.RightSizeAsgForEcsCluster(AwsSess, cluster, atLeastServiceDesiredCount)
+		err := lib.RightSizeAsgForEcsCluster(AwsSess, cluster, atLeastServiceDesiredCount)
+		if err != nil {
+			os.Exit(1)
+		}
 	},
 }
 
