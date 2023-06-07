@@ -182,10 +182,9 @@ func RightSizeAsgForEcsCluster(awsSess *session.Session, cluster string, atLeast
 
 	ecsServices := ListServicesForEcsCluster(awsSess, cluster)
 	resourcesNeeded := GetMemoryCpuNeededForEcsServices(awsSess, ecsServices)
-	memoryNeeded, cpuNeeded := resourcesNeeded.TotalMemory, resourcesNeeded.TotalCPU
-	fmt.Printf("Memory needed for all services with desired count > 0: %v, CPU needed: %v\n", memoryNeeded, cpuNeeded)
+	fmt.Printf("Resources needed for all services with desired count > 0: %+v\n", resourcesNeeded)
 
-	serversNeeded := HowManyServersNeededForAsg(instanceType, memoryNeeded, cpuNeeded)
+	serversNeeded := HowManyServersNeededForAsg(instanceType, resourcesNeeded)
 	fmt.Printf("ASG should have %v servers to fit all tasks\n", serversNeeded)
 
 	// If an ECS service has a desired count > serversNeeded, and atLeastServiceDesiredCount is true, set serversNeeded to

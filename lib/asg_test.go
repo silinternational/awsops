@@ -42,7 +42,11 @@ func TestHowManyServersNeededFor(t *testing.T) {
 	}
 
 	for _, i := range tests {
-		results := HowManyServersNeededForAsg(i.ServerType, i.MemNeeded, i.CPUNeeded)
+		resourceSizes := ResourceSizes{
+			TotalCPU:    i.CPUNeeded,
+			TotalMemory: i.MemNeeded,
+		}
+		results := HowManyServersNeededForAsg(i.ServerType, resourceSizes)
 		if results != i.ExpectedNum {
 			t.Errorf("Did not get back expected number of %s servers needed for %v mem and %v cpu, expected %v, got %v",
 				i.ServerType, i.MemNeeded, i.CPUNeeded, i.ExpectedNum, results)
