@@ -32,8 +32,10 @@ Usage:
   awsops [command]
 
 Available Commands:
+  completion  Generate the autocompletion script for the specified shell
   ecs         ECS related actions, run 'awsops ecs' to view list of subcommands
   help        Help about any command
+  lambda      Commands for interacting with Lambda service
 
 Flags:
       --config string    config file (default is $HOME/.awsops.yaml)
@@ -88,7 +90,7 @@ Global Flags:
 ```
 
 ```
-$ awsops ecs replaceInstances --help
+$ `awsops ecs replaceInstances --help`
 Gracefully replace EC2 instances for given ECS cluster
 
 Usage:
@@ -107,8 +109,8 @@ Global Flags:
 ```
 $ awsops ecs rightSizeCluster --help
 This command calculates total memory and CPU needed
-for all services in the given ECS cluster and then adjusts
-instance count in the ASG based on instance type/size to
+for all services in the given ECS cluster and then adjusts 
+instance count in the ASG based on instance type/size to 
 support running all tasks with as few servers as is needed.
 
 This function may scale a cluster up or down depending on services.
@@ -117,10 +119,29 @@ Usage:
   awsops ecs rightSizeCluster [flags]
 
 Flags:
-  -h, --help   help for rightSizeCluster
+      --atLeastServiceDesiredCount   Ensure at least as many EC2 instances as largest ECS service desired count.
+  -h, --help                         help for rightSizeCluster
 
 Global Flags:
   -c, --cluster string   ECS cluster name
+      --config string    config file (default is $HOME/.awsops.yaml)
+  -p, --profile string   AWS shared credentials profile to use
+  -r, --region string    AWS shared credentials profile to use (default "us-east-1")
+```
+
+```
+$ awsops lambda invoke --help
+Invoke a lambda function
+
+Usage:
+  awsops lambda invoke [flags]
+
+Flags:
+  -f, --function string   Lambda function name
+  -h, --help              help for invoke
+  -b, --payload string    Lambda function input payload as JSON string
+
+Global Flags:
       --config string    config file (default is $HOME/.awsops.yaml)
   -p, --profile string   AWS shared credentials profile to use
   -r, --region string    AWS shared credentials profile to use (default "us-east-1")
