@@ -154,14 +154,8 @@ func GetMemoryCpuNeededForEcsServices(awsSess *session.Session, ecsServices []*e
 			serviceCpu += *c.Cpu
 		}
 
-		if serviceMemory > resourcesNeeded.LargestMemory {
-			resourcesNeeded.LargestMemory = serviceMemory
-		}
-
-		if serviceCpu > resourcesNeeded.LargestCPU {
-			resourcesNeeded.LargestCPU = serviceCpu
-		}
-
+		resourcesNeeded.LargestMemory = max(serviceMemory, resourcesNeeded.LargestMemory)
+		resourcesNeeded.LargestCPU = max(serviceCpu, resourcesNeeded.LargestCPU)
 		resourcesNeeded.TotalMemory += serviceMemory * *service.DesiredCount
 		resourcesNeeded.TotalCPU += serviceCpu * *service.DesiredCount
 	}
@@ -197,8 +191,8 @@ func RightSizeAsgForEcsCluster(awsSess *session.Session, cluster string, atLeast
 	// If an ECS service has a desired count > serversNeeded, and atLeastServiceDesiredCount is true, set serversNeeded to
 	// largest ecs service desired count value
 	largestDesiredCount := GetLargestDesiredCountFromEcsServices(ecsServices)
-	if largestDesiredCount > serversNeeded && atLeastServiceDesiredCount {
-		serversNeeded = largestDesiredCount
+	if atLeastServiceDesiredCount {
+		serversNeeded = max(largestDesiredCount, serversNeeded)
 	}
 
 	asgDesired, asgMin, asgMax := GetAsgServerCount(awsSess, asgName)
@@ -231,10 +225,15 @@ func GetLargestDesiredCountFromEcsServices(ecsServices []*ecs.Service) int64 {
 	largestDesiredCount := int64(0)
 
 	for _, service := range ecsServices {
-		if *service.DesiredCount > largestDesiredCount {
-			largestDesiredCount = *service.DesiredCount
-		}
+		largestDesiredCount = max(*service.DesiredCount, largestDesiredCount)
 	}
 
 	return largestDesiredCount
+}
+
+func max(a, b int64) int64 {
+	if a > b {
+		return a
+	}
+	return b
 }
