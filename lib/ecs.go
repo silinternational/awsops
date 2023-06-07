@@ -2,12 +2,20 @@ package lib
 
 import (
 	"fmt"
+	"os"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/ecs"
-	"os"
 )
+
+type ResourceSizes struct {
+	TotalCPU      int64
+	TotalMemory   int64
+	LargestCPU    int64
+	LargestMemory int64
+}
 
 func GetInstanceListForEcsCluster(awsSess *session.Session, clusterName string) []*ecs.ContainerInstance {
 	svc := ecs.New(awsSess)
@@ -118,11 +126,8 @@ func DescribeEcsServicesForArns(awsSess *session.Session, serviceArns []*string,
 	return descResult.Services, nil
 }
 
-func GetMemoryCpuNeededForEcsServices(awsSess *session.Session, ecsServices []*ecs.Service) (int64, int64) {
-	var memoryNeeded int64 = 0
-	var cpuNeeded int64 = 0
-	var largestServiceMemory int64 = 0
-	var largestServiceCpu int64 = 0
+func GetMemoryCpuNeededForEcsServices(awsSess *session.Session, ecsServices []*ecs.Service) ResourceSizes {
+	var resourcesNeeded ResourceSizes
 
 	svc := ecs.New(awsSess)
 
@@ -149,24 +154,24 @@ func GetMemoryCpuNeededForEcsServices(awsSess *session.Session, ecsServices []*e
 			serviceCpu += *c.Cpu
 		}
 
-		if serviceMemory > largestServiceMemory {
-			largestServiceMemory = serviceMemory
+		if serviceMemory > resourcesNeeded.LargestMemory {
+			resourcesNeeded.LargestMemory = serviceMemory
 		}
 
-		if serviceCpu > largestServiceCpu {
-			largestServiceCpu = serviceCpu
+		if serviceCpu > resourcesNeeded.LargestCPU {
+			resourcesNeeded.LargestCPU = serviceCpu
 		}
 
-		memoryNeeded += serviceMemory * *service.DesiredCount
-		cpuNeeded += serviceCpu * *service.DesiredCount
+		resourcesNeeded.TotalMemory += serviceMemory * *service.DesiredCount
+		resourcesNeeded.TotalCPU += serviceCpu * *service.DesiredCount
 	}
 
 	// Add back in the largest service memory and cpu needs to ensure there is enough extra capacity
 	// to launch another instance of the largest service for rolling updates
-	memoryNeeded += largestServiceMemory
-	cpuNeeded += largestServiceCpu
+	resourcesNeeded.TotalMemory += resourcesNeeded.LargestMemory
+	resourcesNeeded.TotalCPU += resourcesNeeded.LargestCPU
 
-	return memoryNeeded, cpuNeeded
+	return resourcesNeeded
 }
 
 func RightSizeAsgForEcsCluster(awsSess *session.Session, cluster string, atLeastServiceDesiredCount bool) error {
@@ -182,7 +187,8 @@ func RightSizeAsgForEcsCluster(awsSess *session.Session, cluster string, atLeast
 	fmt.Println("ASG uses instance type: ", instanceType)
 
 	ecsServices := ListServicesForEcsCluster(awsSess, cluster)
-	memoryNeeded, cpuNeeded := GetMemoryCpuNeededForEcsServices(awsSess, ecsServices)
+	resourcesNeeded := GetMemoryCpuNeededForEcsServices(awsSess, ecsServices)
+	memoryNeeded, cpuNeeded := resourcesNeeded.TotalMemory, resourcesNeeded.TotalCPU
 	fmt.Printf("Memory needed for all services with desired count > 0: %v, CPU needed: %v\n", memoryNeeded, cpuNeeded)
 
 	serversNeeded := HowManyServersNeededForAsg(instanceType, memoryNeeded, cpuNeeded)
