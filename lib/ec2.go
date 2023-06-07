@@ -40,4 +40,32 @@ var InstanceTypes = map[string]InstanceType{
 		CPUUnits: 8 * SingleCPUUnits,
 		MemoryMb: 32*MbInGb - AgentSize,
 	},
+	"t3.nano": {
+		CPUUnits: 2 * SingleCPUUnits,
+		MemoryMb: 512 - AgentSize,
+	},
+	"t3.micro": {
+		CPUUnits: 2 * SingleCPUUnits,
+		MemoryMb: 1*MbInGb - AgentSize,
+	},
+	"t3.small": {
+		CPUUnits: 2 * SingleCPUUnits,
+		MemoryMb: 2*MbInGb - AgentSize,
+	},
+	"t3.medium": {
+		CPUUnits: 2 * SingleCPUUnits,
+		MemoryMb: 4*MbInGb - AgentSize,
+	},
+	"t3.large": {
+		CPUUnits: 2 * SingleCPUUnits,
+		MemoryMb: 8*MbInGb - AgentSize,
+	},
+	"t3.xlarge": {
+		CPUUnits: 4 * SingleCPUUnits,
+		MemoryMb: 16*MbInGb - AgentSize,
+	},
+	"t3.2xlarge": {
+		CPUUnits: 8 * SingleCPUUnits,
+		MemoryMb: 32*MbInGb - AgentSize,
+	},
 }
