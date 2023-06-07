@@ -150,7 +150,7 @@ func GetInstanceTypeForAsg(awsSess *session.Session, asgName string) string {
 }
 
 // HowManyServersNeededForAsg computes the theoretical number of servers needed based on the total resources needed,
-// assuming perfect utilization of server resources. It does not take into account the "wasted" resources on an
+// assuming near-perfect utilization of server resources. It does not take into account the "wasted" resources on an
 // individual server when the free resources are not sufficient to place any of the desired containers.
 func HowManyServersNeededForAsg(serverType string, resourcesNeeded ResourceSizes) int64 {
 	instanceSpecs, valid := InstanceTypes[serverType]
@@ -159,14 +159,25 @@ func HowManyServersNeededForAsg(serverType string, resourcesNeeded ResourceSizes
 		os.Exit(1)
 	}
 
-	neededForMem := ceiling(resourcesNeeded.TotalMemory, instanceSpecs.MemoryMb)
-	neededForCPU := ceiling(resourcesNeeded.TotalCPU, instanceSpecs.CPUUnits)
+	// Some memory in each instance cannot be used because no container can be placed in the last portion available.
+	// This assumes the best-case container placement.
+	usableMemory := max(1, instanceSpecs.MemoryMb-resourcesNeeded.SmallestMemory)
+	usableCPU := max(1, instanceSpecs.CPUUnits-resourcesNeeded.SmallestCPU)
 
-	return max(neededForCPU, neededForMem)
+	neededForMem := divideAndRoundUp(resourcesNeeded.TotalMemory, usableMemory)
+	neededForCPU := divideAndRoundUp(resourcesNeeded.TotalCPU, usableCPU)
+
+	serversNeeded := max(neededForCPU, neededForMem)
+	if serversNeeded > 100 {
+		fmt.Printf("Calculated need of %d instances, which is over the predefined threshold. Exiting.", serversNeeded)
+		os.Exit(1)
+	}
+
+	return serversNeeded
 }
 
-func ceiling(a, b int64) int64 {
-	return int64(math.Ceil(float64(a) / float64(b)))
+func divideAndRoundUp(numerator, divisor int64) int64 {
+	return int64(math.Ceil(float64(numerator) / float64(divisor)))
 }
 
 func GetAsgServerCount(awsSess *session.Session, asgName string) (desired int64, min int64, max int64) {

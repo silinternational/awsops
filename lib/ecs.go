@@ -11,10 +11,12 @@ import (
 )
 
 type ResourceSizes struct {
-	TotalCPU      int64
-	TotalMemory   int64
-	LargestCPU    int64
-	LargestMemory int64
+	TotalCPU       int64
+	TotalMemory    int64
+	LargestCPU     int64
+	LargestMemory  int64
+	SmallestCPU    int64
+	SmallestMemory int64
 }
 
 func GetInstanceListForEcsCluster(awsSess *session.Session, clusterName string) []*ecs.ContainerInstance {
@@ -128,6 +130,8 @@ func DescribeEcsServicesForArns(awsSess *session.Session, serviceArns []*string,
 
 func GetMemoryCpuNeededForEcsServices(awsSess *session.Session, ecsServices []*ecs.Service) ResourceSizes {
 	var resourcesNeeded ResourceSizes
+	resourcesNeeded.SmallestMemory = 32 * MbInGb
+	resourcesNeeded.SmallestCPU = 32 * MbInGb
 
 	svc := ecs.New(awsSess)
 
@@ -156,6 +160,8 @@ func GetMemoryCpuNeededForEcsServices(awsSess *session.Session, ecsServices []*e
 
 		resourcesNeeded.LargestMemory = max(serviceMemory, resourcesNeeded.LargestMemory)
 		resourcesNeeded.LargestCPU = max(serviceCpu, resourcesNeeded.LargestCPU)
+		resourcesNeeded.SmallestMemory = min(serviceMemory, resourcesNeeded.SmallestMemory)
+		resourcesNeeded.SmallestCPU = min(serviceCpu, resourcesNeeded.SmallestCPU)
 		resourcesNeeded.TotalMemory += serviceMemory * *service.DesiredCount
 		resourcesNeeded.TotalCPU += serviceCpu * *service.DesiredCount
 	}
@@ -232,6 +238,13 @@ func GetLargestDesiredCountFromEcsServices(ecsServices []*ecs.Service) int64 {
 
 func max(a, b int64) int64 {
 	if a > b {
+		return a
+	}
+	return b
+}
+
+func min(a, b int64) int64 {
+	if a < b {
 		return a
 	}
 	return b
