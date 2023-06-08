@@ -35,7 +35,7 @@ var replaceInstancesCmd = &cobra.Command{
 
 		asgName := lib.GetAsgNameForEcsCluster(AwsSess, cluster)
 		if asgName == "" {
-			log.Fatalln("Unable to find ASG name for ECS cluster ", cluster)
+			log.Fatalln("Unable to find ASG name for ECS cluster", cluster)
 		}
 
 		instancesToTerminate := lib.GetInstanceListForAsg(AwsSess, asgName)
@@ -49,7 +49,7 @@ var replaceInstancesCmd = &cobra.Command{
 		for _, instanceID := range instancesToTerminate {
 			_, err := terminateInstance(*instanceID)
 			if err != nil {
-				log.Fatalln("Unable to terminate instance: ", err)
+				log.Fatalln("Unable to terminate instance:", err)
 			}
 			waitForZeroPendingTasks(cluster)
 		}

@@ -38,7 +38,7 @@ var invokeCmd = &cobra.Command{
 
 		result, err := lib.LambdaInvoke(AwsSess, functionName, payload)
 		if err != nil {
-			log.Fatalln(err.Error())
+			log.Fatalln(err)
 		}
 
 		fmt.Printf("Response: [code: %v] %s", *result.StatusCode, result.Payload)

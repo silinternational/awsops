@@ -20,7 +20,7 @@ func GetAsgNameForEcsCluster(awsSess *session.Session, cluster string) string {
 		InstanceIds: instanceIDs,
 	})
 	if err != nil {
-		log.Fatalln("Unable to get asg name from instance: ", err)
+		log.Fatalln("Unable to get asg name from instance:", err)
 	}
 
 	for _, tag := range instanceDetails.Reservations[0].Instances[0].Tags {
@@ -44,7 +44,7 @@ func DetachAndReplaceAsgInstances(awsSess *session.Session, asgName string, inst
 		ShouldDecrementDesiredCapacity: &decrement,
 	})
 	if err != nil {
-		log.Fatalln("Unable to detach instances: ", err)
+		log.Fatalln("Unable to detach instances:", err)
 	}
 
 	fmt.Printf("done\n")
@@ -81,11 +81,11 @@ func GetInstanceTypeFromLaunchConfiguration(awsSess *session.Session, launchConf
 
 	lc, err := autoscaling.New(awsSess).DescribeLaunchConfigurations(input)
 	if err != nil {
-		log.Fatalln("Unable to describe launch configuration: ", err.Error())
+		log.Fatalln("Unable to describe launch configuration:", err)
 	}
 
 	if len(lc.LaunchConfigurations) != 1 {
-		log.Fatalln("Expected one Launch Configuration, received ", len(lc.LaunchConfigurations))
+		log.Fatalln("Expected one Launch Configuration, received", len(lc.LaunchConfigurations))
 	}
 
 	return *lc.LaunchConfigurations[0].InstanceType
@@ -102,11 +102,11 @@ func GetInstanceTypeFromLaunchTemplate(awsSess *session.Session, launchTemplateN
 
 	lt, err := ec2Client.DescribeLaunchTemplates(input)
 	if err != nil {
-		log.Fatalln("Unable to describe Launch Template, err: ", err.Error())
+		log.Fatalln("Unable to describe Launch Template, err:", err)
 	}
 
 	if len(lt.LaunchTemplates) != 1 {
-		log.Fatalln("Expected one Launch Template, found ", len(lt.LaunchTemplates))
+		log.Fatalln("Expected one Launch Template, found", len(lt.LaunchTemplates))
 	}
 
 	ltvInput := ec2.DescribeLaunchTemplateVersionsInput{
@@ -115,11 +115,11 @@ func GetInstanceTypeFromLaunchTemplate(awsSess *session.Session, launchTemplateN
 	}
 	ltv, err := ec2Client.DescribeLaunchTemplateVersions(&ltvInput)
 	if err != nil {
-		log.Fatalln("Unable to describe Launch Template version, error: ", err.Error())
+		log.Fatalln("Unable to describe Launch Template version, error:", err)
 	}
 
 	if len(ltv.LaunchTemplateVersions) != 1 {
-		log.Fatalln(`Expected one "$Latest" Launch Template version, received `, len(lt.LaunchTemplates))
+		log.Fatalln(`Expected one "$Latest" Launch Template version, received`, len(lt.LaunchTemplates))
 	}
 
 	return *ltv.LaunchTemplateVersions[0].LaunchTemplateData.InstanceType
@@ -146,7 +146,7 @@ func GetInstanceTypeForAsg(awsSess *session.Session, asgName string) string {
 func HowManyServersNeededForAsg(serverType string, resourcesNeeded ResourceSizes) int64 {
 	instanceSpecs, valid := InstanceTypes[serverType]
 	if !valid {
-		log.Fatalln("Invalid server type provided: ", serverType)
+		log.Fatalln("Invalid server type provided:", serverType)
 	}
 
 	if resourcesNeeded.LargestMemory > instanceSpecs.MemoryMb {
@@ -192,11 +192,11 @@ func GetAsg(awsSess *session.Session, asgName string) *autoscaling.Group {
 		AutoScalingGroupNames: []*string{&asgName},
 	})
 	if err != nil {
-		log.Fatalln("Unable to get list of ASG groups: ", err)
+		log.Fatalln("Unable to get list of ASG groups:", err)
 	}
 
 	if len(groups.AutoScalingGroups) != 1 {
-		log.Fatalln("DescribeAutoScalingGroups did not return expected number of results. Expected: 1, Actual: ", len(groups.AutoScalingGroups))
+		log.Fatalln("DescribeAutoScalingGroups did not return expected number of results. Expected: 1, Actual:", len(groups.AutoScalingGroups))
 	}
 
 	return groups.AutoScalingGroups[0]
