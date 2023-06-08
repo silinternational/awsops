@@ -16,20 +16,22 @@ package cmd
 
 import (
 	"fmt"
-	"os"
+	"log"
 
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
 )
 
-var AwsSess *session.Session
-var cfgFile string
-var Profile string
-var Region string
+var (
+	AwsSess *session.Session
+	cfgFile string
+	Profile string
+	Region  string
+)
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -45,8 +47,7 @@ var rootCmd = &cobra.Command{
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		log.Fatalln(err)
 	}
 }
 
@@ -74,8 +75,7 @@ func initConfig() {
 		// Find home directory.
 		home, err := homedir.Dir()
 		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
+			log.Fatalln(err)
 		}
 
 		// Search config in home directory with name ".awsops" (without extension).
@@ -101,7 +101,7 @@ func initAwsSess() {
 		}))
 	} else {
 		AwsSess = session.Must(session.NewSession(&aws.Config{
-			Region:      aws.String(Region),
+			Region: aws.String(Region),
 		}))
 	}
 }

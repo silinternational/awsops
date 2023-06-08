@@ -2,8 +2,8 @@ package lib
 
 import (
 	"fmt"
+	"log"
 	"math"
-	"os"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -20,8 +20,7 @@ func GetAsgNameForEcsCluster(awsSess *session.Session, cluster string) string {
 		InstanceIds: instanceIDs,
 	})
 	if err != nil {
-		fmt.Println("Unable to get asg name from instance: ", err)
-		os.Exit(1)
+		log.Fatalln("Unable to get asg name from instance:", err)
 	}
 
 	for _, tag := range instanceDetails.Reservations[0].Instances[0].Tags {
@@ -45,8 +44,7 @@ func DetachAndReplaceAsgInstances(awsSess *session.Session, asgName string, inst
 		ShouldDecrementDesiredCapacity: &decrement,
 	})
 	if err != nil {
-		fmt.Println("Unable to detach instances: ", err)
-		os.Exit(1)
+		log.Fatalln("Unable to detach instances:", err)
 	}
 
 	fmt.Printf("done\n")
@@ -83,13 +81,11 @@ func GetInstanceTypeFromLaunchConfiguration(awsSess *session.Session, launchConf
 
 	lc, err := autoscaling.New(awsSess).DescribeLaunchConfigurations(input)
 	if err != nil {
-		fmt.Println("Unable to describe launch configuration: ", err.Error())
-		os.Exit(1)
+		log.Fatalln("Unable to describe launch configuration:", err)
 	}
 
 	if len(lc.LaunchConfigurations) != 1 {
-		fmt.Println("Expected one Launch Configuration, received ", len(lc.LaunchConfigurations))
-		os.Exit(1)
+		log.Fatalln("Expected one Launch Configuration, received", len(lc.LaunchConfigurations))
 	}
 
 	return *lc.LaunchConfigurations[0].InstanceType
@@ -106,13 +102,11 @@ func GetInstanceTypeFromLaunchTemplate(awsSess *session.Session, launchTemplateN
 
 	lt, err := ec2Client.DescribeLaunchTemplates(input)
 	if err != nil {
-		fmt.Println("Unable to describe Launch Template, err: ", err.Error())
-		os.Exit(1)
+		log.Fatalln("Unable to describe Launch Template, err:", err)
 	}
 
 	if len(lt.LaunchTemplates) != 1 {
-		fmt.Println("Expected one Launch Template, found ", len(lt.LaunchTemplates))
-		os.Exit(1)
+		log.Fatalln("Expected one Launch Template, found", len(lt.LaunchTemplates))
 	}
 
 	ltvInput := ec2.DescribeLaunchTemplateVersionsInput{
@@ -121,13 +115,11 @@ func GetInstanceTypeFromLaunchTemplate(awsSess *session.Session, launchTemplateN
 	}
 	ltv, err := ec2Client.DescribeLaunchTemplateVersions(&ltvInput)
 	if err != nil {
-		fmt.Println("Unable to describe Launch Template version, error: ", err.Error())
-		os.Exit(1)
+		log.Fatalln("Unable to describe Launch Template version, error:", err)
 	}
 
 	if len(ltv.LaunchTemplateVersions) != 1 {
-		fmt.Println(`Expected one "$Latest" Launch Template version, received `, len(lt.LaunchTemplates))
-		os.Exit(1)
+		log.Fatalln(`Expected one "$Latest" Launch Template version, received`, len(lt.LaunchTemplates))
 	}
 
 	return *ltv.LaunchTemplateVersions[0].LaunchTemplateData.InstanceType
@@ -144,8 +136,7 @@ func GetInstanceTypeForAsg(awsSess *session.Session, asgName string) string {
 		return GetInstanceTypeFromLaunchTemplate(awsSess, *asg.LaunchTemplate.LaunchTemplateName)
 	}
 
-	fmt.Println("Unable to determine the ASG instance type. No Launch Template nor Launch Configuration is defined.")
-	os.Exit(1)
+	log.Fatalln("Unable to determine the ASG instance type. No Launch Template nor Launch Configuration is defined.")
 	return ""
 }
 
@@ -155,20 +146,17 @@ func GetInstanceTypeForAsg(awsSess *session.Session, asgName string) string {
 func HowManyServersNeededForAsg(serverType string, resourcesNeeded ResourceSizes) int64 {
 	instanceSpecs, valid := InstanceTypes[serverType]
 	if !valid {
-		fmt.Println("Invalid server type provided: ", serverType)
-		os.Exit(1)
+		log.Fatalln("Invalid server type provided:", serverType)
 	}
 
 	if resourcesNeeded.LargestMemory > instanceSpecs.MemoryMb {
-		fmt.Printf("Configured instance type is not large enough. Available memory is %d, but largest task needs %d",
+		log.Fatalf("Configured instance type is not large enough. Available memory is %d, but largest task needs %d",
 			instanceSpecs.MemoryMb, resourcesNeeded.LargestMemory)
-		os.Exit(1)
 	}
 
 	if resourcesNeeded.LargestCPU > instanceSpecs.CPUUnits {
-		fmt.Printf("Configured instance type is not large enough. Available CPU is %d, but largest task needs %d",
+		log.Fatalf("Configured instance type is not large enough. Available CPU is %d, but largest task needs %d",
 			instanceSpecs.CPUUnits, resourcesNeeded.LargestCPU)
-		os.Exit(1)
 	}
 
 	// Some memory in each instance cannot be used because no container can be placed in the last portion available.
@@ -181,8 +169,7 @@ func HowManyServersNeededForAsg(serverType string, resourcesNeeded ResourceSizes
 
 	serversNeeded := max(neededForCPU, neededForMem)
 	if serversNeeded > 100 {
-		fmt.Printf("Calculated need of %d instances, which is over the predefined threshold. Exiting.", serversNeeded)
-		os.Exit(1)
+		log.Fatalf("Calculated need of %d instances, which is over the predefined threshold. Exiting.", serversNeeded)
 	}
 
 	return serversNeeded
@@ -205,13 +192,11 @@ func GetAsg(awsSess *session.Session, asgName string) *autoscaling.Group {
 		AutoScalingGroupNames: []*string{&asgName},
 	})
 	if err != nil {
-		fmt.Println("Unable to get list of ASG groups: ", err)
-		os.Exit(1)
+		log.Fatalln("Unable to get list of ASG groups:", err)
 	}
 
 	if len(groups.AutoScalingGroups) != 1 {
-		fmt.Println("DescribeAutoScalingGroups did not return expected number of results. Expected: 1, Actual: ", len(groups.AutoScalingGroups))
-		os.Exit(1)
+		log.Fatalln("DescribeAutoScalingGroups did not return expected number of results. Expected: 1, Actual:", len(groups.AutoScalingGroups))
 	}
 
 	return groups.AutoScalingGroups[0]

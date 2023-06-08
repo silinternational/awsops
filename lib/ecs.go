@@ -2,7 +2,7 @@ package lib
 
 import (
 	"fmt"
-	"os"
+	"log"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -25,8 +25,7 @@ func GetInstanceListForEcsCluster(awsSess *session.Session, clusterName string) 
 		Cluster: aws.String(clusterName),
 	})
 	if err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
+		log.Fatalln(err)
 	}
 
 	descResult, err := svc.DescribeContainerInstances(&ecs.DescribeContainerInstancesInput{
@@ -34,8 +33,7 @@ func GetInstanceListForEcsCluster(awsSess *session.Session, clusterName string) 
 		ContainerInstances: listResult.ContainerInstanceArns,
 	})
 	if err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
+		log.Fatalln(err)
 	}
 
 	return descResult.ContainerInstances
@@ -60,8 +58,7 @@ func GetInstanceIPsForEcsCluster(awsSess *session.Session, clusterName string) [
 		InstanceIds: instanceIDs,
 	})
 	if err != nil {
-		fmt.Println("Unable to get instance details", err)
-		os.Exit(1)
+		log.Fatalln("Unable to get instance details", err)
 	}
 
 	var instanceIPs []string
@@ -96,8 +93,7 @@ func ListServicesForEcsCluster(awsSess *session.Session, cluster string) []*ecs.
 	}, func(page *ecs.ListServicesOutput, lastPage bool) bool {
 		services, err := DescribeEcsServicesForArns(awsSess, page.ServiceArns, cluster)
 		if err != nil {
-			fmt.Println(err.Error())
-			os.Exit(1)
+			log.Fatalln(err)
 		}
 
 		for _, service := range services {
@@ -107,8 +103,7 @@ func ListServicesForEcsCluster(awsSess *session.Session, cluster string) []*ecs.
 		return !lastPage
 	})
 	if err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
+		log.Fatalln(err)
 	}
 
 	return allServices
@@ -145,8 +140,7 @@ func GetMemoryCpuNeededForEcsServices(awsSess *session.Session, ecsServices []*e
 			TaskDefinition: service.TaskDefinition,
 		})
 		if err != nil {
-			fmt.Printf("Unable to describe task definition %s\n", *service.TaskDefinition)
-			os.Exit(1)
+			log.Fatalln("Unable to describe task definition", *service.TaskDefinition)
 		}
 
 		var serviceMemory int64 = 0
@@ -177,8 +171,7 @@ func GetMemoryCpuNeededForEcsServices(awsSess *session.Session, ecsServices []*e
 func RightSizeAsgForEcsCluster(awsSess *session.Session, cluster string, atLeastServiceDesiredCount bool) error {
 	asgName := GetAsgNameForEcsCluster(awsSess, cluster)
 	if asgName == "" {
-		fmt.Println("Unable to find ASG name for ECS cluster ", cluster)
-		os.Exit(1)
+		log.Fatalln("Unable to find ASG name for ECS cluster", cluster)
 	}
 
 	fmt.Println("ASG found: ", asgName)

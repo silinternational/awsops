@@ -16,13 +16,17 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/silinternational/awsops/lib"
+	"log"
+
 	"github.com/spf13/cobra"
-	"os"
+
+	"github.com/silinternational/awsops/lib"
 )
 
-var functionName string
-var payload string
+var (
+	functionName string
+	payload      string
+)
 
 // invokeCmd represents the invoke command
 var invokeCmd = &cobra.Command{
@@ -34,8 +38,7 @@ var invokeCmd = &cobra.Command{
 
 		result, err := lib.LambdaInvoke(AwsSess, functionName, payload)
 		if err != nil {
-			fmt.Println(err.Error())
-			os.Exit(1)
+			log.Fatalln(err)
 		}
 
 		fmt.Printf("Response: [code: %v] %s", *result.StatusCode, result.Payload)
