@@ -2,12 +2,22 @@ package lib
 
 import (
 	"fmt"
+	"log"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/ecs"
-	"os"
 )
+
+type ResourceSizes struct {
+	TotalCPU       int64
+	TotalMemory    int64
+	LargestCPU     int64
+	LargestMemory  int64
+	SmallestCPU    int64
+	SmallestMemory int64
+}
 
 func GetInstanceListForEcsCluster(awsSess *session.Session, clusterName string) []*ecs.ContainerInstance {
 	svc := ecs.New(awsSess)
@@ -15,8 +25,7 @@ func GetInstanceListForEcsCluster(awsSess *session.Session, clusterName string) 
 		Cluster: aws.String(clusterName),
 	})
 	if err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
+		log.Fatalln(err)
 	}
 
 	descResult, err := svc.DescribeContainerInstances(&ecs.DescribeContainerInstancesInput{
@@ -24,8 +33,7 @@ func GetInstanceListForEcsCluster(awsSess *session.Session, clusterName string) 
 		ContainerInstances: listResult.ContainerInstanceArns,
 	})
 	if err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
+		log.Fatalln(err)
 	}
 
 	return descResult.ContainerInstances
@@ -50,8 +58,7 @@ func GetInstanceIPsForEcsCluster(awsSess *session.Session, clusterName string) [
 		InstanceIds: instanceIDs,
 	})
 	if err != nil {
-		fmt.Println("Unable to get instance details", err)
-		os.Exit(1)
+		log.Fatalln("Unable to get instance details", err)
 	}
 
 	var instanceIPs []string
@@ -86,8 +93,7 @@ func ListServicesForEcsCluster(awsSess *session.Session, cluster string) []*ecs.
 	}, func(page *ecs.ListServicesOutput, lastPage bool) bool {
 		services, err := DescribeEcsServicesForArns(awsSess, page.ServiceArns, cluster)
 		if err != nil {
-			fmt.Println(err.Error())
-			os.Exit(1)
+			log.Fatalln(err)
 		}
 
 		for _, service := range services {
@@ -97,8 +103,7 @@ func ListServicesForEcsCluster(awsSess *session.Session, cluster string) []*ecs.
 		return !lastPage
 	})
 	if err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
+		log.Fatalln(err)
 	}
 
 	return allServices
@@ -118,11 +123,10 @@ func DescribeEcsServicesForArns(awsSess *session.Session, serviceArns []*string,
 	return descResult.Services, nil
 }
 
-func GetMemoryCpuNeededForEcsServices(awsSess *session.Session, ecsServices []*ecs.Service) (int64, int64) {
-	var memoryNeeded int64 = 0
-	var cpuNeeded int64 = 0
-	var largestServiceMemory int64 = 0
-	var largestServiceCpu int64 = 0
+func GetMemoryCpuNeededForEcsServices(awsSess *session.Session, ecsServices []*ecs.Service) ResourceSizes {
+	var resourcesNeeded ResourceSizes
+	resourcesNeeded.SmallestMemory = 32 * MbInGb
+	resourcesNeeded.SmallestCPU = 32 * MbInGb
 
 	svc := ecs.New(awsSess)
 
@@ -136,8 +140,7 @@ func GetMemoryCpuNeededForEcsServices(awsSess *session.Session, ecsServices []*e
 			TaskDefinition: service.TaskDefinition,
 		})
 		if err != nil {
-			fmt.Printf("Unable to describe task definition %s\n", *service.TaskDefinition)
-			os.Exit(1)
+			log.Fatalln("Unable to describe task definition", *service.TaskDefinition)
 		}
 
 		var serviceMemory int64 = 0
@@ -149,31 +152,26 @@ func GetMemoryCpuNeededForEcsServices(awsSess *session.Session, ecsServices []*e
 			serviceCpu += *c.Cpu
 		}
 
-		if serviceMemory > largestServiceMemory {
-			largestServiceMemory = serviceMemory
-		}
-
-		if serviceCpu > largestServiceCpu {
-			largestServiceCpu = serviceCpu
-		}
-
-		memoryNeeded += serviceMemory * *service.DesiredCount
-		cpuNeeded += serviceCpu * *service.DesiredCount
+		resourcesNeeded.LargestMemory = max(serviceMemory, resourcesNeeded.LargestMemory)
+		resourcesNeeded.LargestCPU = max(serviceCpu, resourcesNeeded.LargestCPU)
+		resourcesNeeded.SmallestMemory = min(serviceMemory, resourcesNeeded.SmallestMemory)
+		resourcesNeeded.SmallestCPU = min(serviceCpu, resourcesNeeded.SmallestCPU)
+		resourcesNeeded.TotalMemory += serviceMemory * *service.DesiredCount
+		resourcesNeeded.TotalCPU += serviceCpu * *service.DesiredCount
 	}
 
 	// Add back in the largest service memory and cpu needs to ensure there is enough extra capacity
 	// to launch another instance of the largest service for rolling updates
-	memoryNeeded += largestServiceMemory
-	cpuNeeded += largestServiceCpu
+	resourcesNeeded.TotalMemory += resourcesNeeded.LargestMemory
+	resourcesNeeded.TotalCPU += resourcesNeeded.LargestCPU
 
-	return memoryNeeded, cpuNeeded
+	return resourcesNeeded
 }
 
 func RightSizeAsgForEcsCluster(awsSess *session.Session, cluster string, atLeastServiceDesiredCount bool) error {
 	asgName := GetAsgNameForEcsCluster(awsSess, cluster)
 	if asgName == "" {
-		fmt.Println("Unable to find ASG name for ECS cluster ", cluster)
-		os.Exit(1)
+		log.Fatalln("Unable to find ASG name for ECS cluster", cluster)
 	}
 
 	fmt.Println("ASG found: ", asgName)
@@ -182,17 +180,17 @@ func RightSizeAsgForEcsCluster(awsSess *session.Session, cluster string, atLeast
 	fmt.Println("ASG uses instance type: ", instanceType)
 
 	ecsServices := ListServicesForEcsCluster(awsSess, cluster)
-	memoryNeeded, cpuNeeded := GetMemoryCpuNeededForEcsServices(awsSess, ecsServices)
-	fmt.Printf("Memory needed for all services with desired count > 0: %v, CPU needed: %v\n", memoryNeeded, cpuNeeded)
+	resourcesNeeded := GetMemoryCpuNeededForEcsServices(awsSess, ecsServices)
+	fmt.Printf("Resources needed for all services with desired count > 0: %+v\n", resourcesNeeded)
 
-	serversNeeded := HowManyServersNeededForAsg(instanceType, memoryNeeded, cpuNeeded)
+	serversNeeded := HowManyServersNeededForAsg(instanceType, resourcesNeeded)
 	fmt.Printf("ASG should have %v servers to fit all tasks\n", serversNeeded)
 
 	// If an ECS service has a desired count > serversNeeded, and atLeastServiceDesiredCount is true, set serversNeeded to
 	// largest ecs service desired count value
-	largestDesiredCount := GetLargestDesiredCountFromEcsServices(ecsServices)
-	if largestDesiredCount > serversNeeded && atLeastServiceDesiredCount {
-		serversNeeded = largestDesiredCount
+	if atLeastServiceDesiredCount {
+		largestDesiredCount := GetLargestDesiredCountFromEcsServices(ecsServices)
+		serversNeeded = max(largestDesiredCount, serversNeeded)
 	}
 
 	asgDesired, asgMin, asgMax := GetAsgServerCount(awsSess, asgName)
@@ -225,10 +223,22 @@ func GetLargestDesiredCountFromEcsServices(ecsServices []*ecs.Service) int64 {
 	largestDesiredCount := int64(0)
 
 	for _, service := range ecsServices {
-		if *service.DesiredCount > largestDesiredCount {
-			largestDesiredCount = *service.DesiredCount
-		}
+		largestDesiredCount = max(*service.DesiredCount, largestDesiredCount)
 	}
 
 	return largestDesiredCount
+}
+
+func max(a, b int64) int64 {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func min(a, b int64) int64 {
+	if a < b {
+		return a
+	}
+	return b
 }
