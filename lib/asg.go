@@ -149,21 +149,47 @@ func GetInstanceTypeForAsg(awsSess *session.Session, asgName string) string {
 	return ""
 }
 
-func HowManyServersNeededForAsg(serverType string, memory, cpu int64) int64 {
+// HowManyServersNeededForAsg computes the theoretical number of servers needed based on the total resources needed,
+// assuming near-perfect utilization of server resources. It does not take into account the "wasted" resources on an
+// individual server when the free resources are not sufficient to place any of the desired containers.
+func HowManyServersNeededForAsg(serverType string, resourcesNeeded ResourceSizes) int64 {
 	instanceSpecs, valid := InstanceTypes[serverType]
 	if !valid {
 		fmt.Println("Invalid server type provided: ", serverType)
 		os.Exit(1)
 	}
 
-	neededForMem := math.Ceil(float64(memory) / float64(instanceSpecs.MemoryMb))
-	neededForCPU := math.Ceil(float64(cpu) / float64(instanceSpecs.CPUUnits))
-
-	if neededForMem > neededForCPU {
-		return int64(neededForMem)
+	if resourcesNeeded.LargestMemory > instanceSpecs.MemoryMb {
+		fmt.Printf("Configured instance type is not large enough. Available memory is %d, but largest task needs %d",
+			instanceSpecs.MemoryMb, resourcesNeeded.LargestMemory)
+		os.Exit(1)
 	}
 
-	return int64(neededForCPU)
+	if resourcesNeeded.LargestCPU > instanceSpecs.CPUUnits {
+		fmt.Printf("Configured instance type is not large enough. Available CPU is %d, but largest task needs %d",
+			instanceSpecs.CPUUnits, resourcesNeeded.LargestCPU)
+		os.Exit(1)
+	}
+
+	// Some memory in each instance cannot be used because no container can be placed in the last portion available.
+	// This assumes the best-case container placement.
+	usableMemory := max(1, instanceSpecs.MemoryMb-resourcesNeeded.SmallestMemory)
+	usableCPU := max(1, instanceSpecs.CPUUnits-resourcesNeeded.SmallestCPU)
+
+	neededForMem := divideAndRoundUp(resourcesNeeded.TotalMemory, usableMemory)
+	neededForCPU := divideAndRoundUp(resourcesNeeded.TotalCPU, usableCPU)
+
+	serversNeeded := max(neededForCPU, neededForMem)
+	if serversNeeded > 100 {
+		fmt.Printf("Calculated need of %d instances, which is over the predefined threshold. Exiting.", serversNeeded)
+		os.Exit(1)
+	}
+
+	return serversNeeded
+}
+
+func divideAndRoundUp(numerator, divisor int64) int64 {
+	return int64(math.Ceil(float64(numerator) / float64(divisor)))
 }
 
 func GetAsgServerCount(awsSess *session.Session, asgName string) (desired int64, min int64, max int64) {
