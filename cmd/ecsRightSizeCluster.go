@@ -15,7 +15,7 @@
 package cmd
 
 import (
-	"os"
+	"log"
 
 	"github.com/spf13/cobra"
 
@@ -38,7 +38,7 @@ This function may scale a cluster up or down depending on services.`,
 		initAwsSess()
 		err := lib.RightSizeAsgForEcsCluster(AwsSess, cluster, atLeastServiceDesiredCount)
 		if err != nil {
-			os.Exit(1)
+			log.Fatalln(err.Error())
 		}
 	},
 }

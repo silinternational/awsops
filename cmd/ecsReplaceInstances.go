@@ -16,12 +16,13 @@ package cmd
 
 import (
 	"fmt"
-	"os"
+	"log"
 	"time"
 
 	"github.com/aws/aws-sdk-go/service/ec2"
-	"github.com/silinternational/awsops/lib"
 	"github.com/spf13/cobra"
+
+	"github.com/silinternational/awsops/lib"
 )
 
 // ecsReplaceInstancesCmd represents the ecsReplaceInstances command
@@ -30,13 +31,11 @@ var replaceInstancesCmd = &cobra.Command{
 	Short: "Gracefully replace EC2 instances for given ECS cluster",
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
-
 		initAwsSess()
 
 		asgName := lib.GetAsgNameForEcsCluster(AwsSess, cluster)
 		if asgName == "" {
-			fmt.Println("Unable to find ASG name for ECS cluster ", cluster)
-			os.Exit(1)
+			log.Fatalln("Unable to find ASG name for ECS cluster ", cluster)
 		}
 
 		instancesToTerminate := lib.GetInstanceListForAsg(AwsSess, asgName)
@@ -50,8 +49,7 @@ var replaceInstancesCmd = &cobra.Command{
 		for _, instanceID := range instancesToTerminate {
 			_, err := terminateInstance(*instanceID)
 			if err != nil {
-				fmt.Println("Unable to terminate instance: ", err)
-				os.Exit(1)
+				log.Fatalln("Unable to terminate instance: ", err)
 			}
 			waitForZeroPendingTasks(cluster)
 		}
