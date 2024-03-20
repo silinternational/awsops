@@ -4,9 +4,6 @@ on:
   pull_request:
   push:
 
-permissions:
-  contents: write
-
 jobs:
   test:
     name: Unit Tests
