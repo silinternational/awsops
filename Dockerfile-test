@@ -7,4 +7,4 @@ WORKDIR /src
 COPY ./ /src
 RUN go get ./...
 
-CMD ["go", "test", "./..."]
+CMD ["go", "test", "-v", "./..."]

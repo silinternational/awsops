@@ -1,6 +1,6 @@
 module github.com/silinternational/awsops
 
-// Ensure this version tracks with /Dockerfile and codeship/Dockerfile
+// Ensure this version tracks with /Dockerfile and /Dockerfile-test
 go 1.19
 
 require (
