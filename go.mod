@@ -1,6 +1,6 @@
 module github.com/silinternational/awsops
 
-// Ensure this version tracks with /Dockerfile and /Dockerfile-test
+// Ensure this version tracks with /Dockerfile and workflows
 go 1.19
 
 require (

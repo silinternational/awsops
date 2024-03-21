@@ -4,13 +4,3 @@ services:
   app:
     build: .
     working_dir: /src
-
-  test:
-    build:
-      context: .
-      dockerfile: Dockerfile-test
-    environment:
-      AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
-      AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
-      AWS_REGION: $AWS_REGION
-    working_dir: /src

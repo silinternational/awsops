@@ -1,4 +1,4 @@
-# Ensure this version tracks with go.mod and /Dockerfile-test
+# Ensure this version tracks with go.mod and workflows
 FROM golang:1.19 as builder
 
 # Ensure go build env is correct
