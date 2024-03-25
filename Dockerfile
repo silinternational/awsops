@@ -1,5 +1,5 @@
-# Ensure this version tracks with go.mod and codeship/Dockerfile
-FROM golang:1.19 as builder
+# Ensure this version tracks with go.mod and workflows
+FROM golang:1.22 as builder
 
 # Ensure go build env is correct
 ENV GOOS linux
