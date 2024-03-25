@@ -17,11 +17,11 @@ package cmd
 import (
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -73,7 +73,7 @@ func initConfig() {
 		viper.SetConfigFile(cfgFile)
 	} else {
 		// Find home directory.
-		home, err := homedir.Dir()
+		home, err := os.UserHomeDir()
 		if err != nil {
 			log.Fatalln(err)
 		}
