@@ -1,4 +1,4 @@
-# Ensure this version tracks with go.mod and workflows
+# Ensure this version tracks with go.mod
 FROM golang:1.22 as builder
 
 # Ensure go build env is correct
