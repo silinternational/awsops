@@ -1,3 +1,6 @@
+# Archived
+This tool is no longer being maintained.
+
 # awsops
 A Go based CLI and Serverless functions for common AWS operations
 
